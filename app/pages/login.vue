@@ -123,7 +123,7 @@ const showPassword = ref(false)
 onMounted(async () => {
   const { data: { session } } = await auth.getSession()
   if (session) {
-    navigateTo('/gallery')
+    navigateTo('/photographer')
   }
 })
 

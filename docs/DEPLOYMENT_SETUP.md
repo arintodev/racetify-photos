@@ -90,7 +90,7 @@ pm2 startup
 cd ~/apps/racetify-photo
 
 # Buat ecosystem.config.js
-cat > ecosystem.config.js << 'EOF'
+cat > ecosystem.config.cjs << 'EOF'
 module.exports = {
   apps: [{
     name: 'racetify-photo',

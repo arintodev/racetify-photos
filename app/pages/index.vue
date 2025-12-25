@@ -13,7 +13,7 @@
               v-if="isAuthenticated"
               color="primary"
               variant="solid"
-              to="/gallery"
+              to="/photographer"
             >
               <UIcon name="i-heroicons-photo" />
               Gallery
