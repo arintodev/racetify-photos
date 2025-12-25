@@ -1,0 +1,91 @@
+name: Build and Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+          # Supabase credentials untuk build-time (jika diperlukan)
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      
+      - name: Create deployment archive
+        run: |
+          tar -czf deploy.tar.gz \
+            package.json \
+            package-lock.json \
+            .output/ \
+            .nuxt/
+      
+      - name: Copy deployment archive to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          source: "deploy-racetify-photo.tar.gz"
+          target: "/tmp/"
+      
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            cd ~/apps/racetify-photo
+            
+            echo "📦 Extracting new build..."
+            tar -xzf /tmp/deploy-racetify-photo.tar.gz -C ~/apps/racetify-photo
+            rm /tmp/deploy-racetify-photo.tar.gz
+            
+            echo "🔐 Creating .env file..."
+            cat > .env << 'EOF'
+            NODE_ENV=production
+            PORT=${{ vars.PORT }}
+            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+            SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
+            EOF
+            
+            echo "📚 Installing production dependencies..."
+            npm install --production --prefer-offline
+            
+            echo "🔄 Restarting application..."
+            pm2 restart racetify-photo --update-env
+            
+            echo "✅ Deployment completed!"
+            pm2 status
+      
+      - name: Health check
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            sleep 5
+            curl -f http://localhost:${{ vars.PORT }} || echo "⚠️ Health check failed"

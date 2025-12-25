@@ -8,5 +8,13 @@ export default defineNuxtConfig({
     '@nuxtjs/supabase',
   ],
 
+  supabase: {
+    redirectOptions: {
+      login: '/login',
+      callback: '/confirm',
+      exclude: ['/', '/event/*', '/search'], // Public routes yang tidak perlu auth
+    }
+  },
+
   css: ['~/assets/css/main.css'],
 })
