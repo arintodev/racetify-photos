@@ -1,103 +1,115 @@
 <template>
-  <div class="min-h-screen bg-background">
+  <div>
     <!-- Header -->
-    <header class="bg-primary shadow-sm">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-3xl font-bold text-white">Racetify Photos</h1>
-            <p class="text-sm text-gray-200 mt-1">Temukan foto race Anda</p>
-          </div>
-          <div class="flex gap-2">
-            <UButton
-              v-if="isAuthenticated"
-              color="primary"
-              variant="solid"
-              to="/photographer"
-            >
-              <UIcon name="i-heroicons-photo" />
-              Gallery
-            </UButton>
-            <UButton
-              v-else
-              color="primary"
-              variant="outline"
-              to="/login"
-            >
-              <UIcon name="i-heroicons-arrow-right-on-rectangle" />
-              Login
-            </UButton>
-          </div>
+    <UHeader>
+      <template #left>
+        <div>
+          <h1 class="text-lg font-bold">Racetify Photo</h1>
         </div>
-      </div>
-    </header>
+      </template>
 
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Hero Section -->
-      <div class="text-center mb-12">
-        <UIcon name="i-heroicons-camera" class="text-6xl text-primary mx-auto mb-4" />
-        <h2 class="text-2xl font-bold text-highlighted mb-3">
-          Pilih Event untuk Mencari Foto Anda
-        </h2>
-        <p class="text-muted max-w-2xl mx-auto">
-          Pilih event yang Anda ikuti, lalu masukkan nomor bib untuk menemukan foto race Anda
-        </p>
-      </div>
+      <template #right>
+        <UButton
+          v-if="isAuthenticated"
+          color="primary"
+          variant="solid"
+          to="/photographer"
+          icon="i-heroicons-photo"
+          label="Gallery"
+        />
+        <UButton
+          v-else
+          color="primary"
+          variant="outline"
+          to="/login"
+          icon="i-heroicons-arrow-right-on-rectangle"
+          label="Login"
+        />
+      </template>
+    </UHeader>
 
+    <!-- Hero Section -->
+    <UPageHero
+      title="Temukan Foto Race Anda"
+      description="Cari dan download foto race Anda dengan mudah menggunakan nomor bib. Pilih event yang Anda ikuti dan temukan momen terbaik Anda!"
+      :links="[
+        { label: 'Mulai Cari Foto', color: 'primary', size: 'lg', to: '#events' }
+      ]"
+    >
+      <template #headline>
+        <UBadge variant="subtle" size="lg">
+          <UIcon name="i-heroicons-camera" class="mr-1" />
+          Platform Pencarian Foto Race
+        </UBadge>
+      </template>
+    </UPageHero>
+
+    <!-- Events Section -->
+    <UContainer>
+      <div id="events" class="py-16">
+        <div class="text-center mb-12">
+          <h2 class="text-4xl font-bold mb-4">Pilih Event Anda</h2>
+          <p class="text-lg text-gray-500 dark:text-gray-400">Temukan event race yang pernah Anda ikuti dan cari foto Anda</p>
+        </div>
+        
       <!-- Loading State -->
       <div v-if="isLoading" class="text-center py-12">
         <UIcon name="i-heroicons-arrow-path" class="text-4xl text-primary animate-spin mb-4" />
         <p class="text-muted">Memuat daftar event...</p>
       </div>
 
-      <!-- Events Grid -->
-      <div v-else-if="events.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <UCard
-          v-for="event in events"
-          :key="event.id"
-          class="hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105"
-          @click="selectEvent(event)"
+      <!-- Events Carousel -->
+      <UCarousel
+        v-else-if="events.length > 0"
+        v-slot="{ item }"
+        :items="events"
+        :ui="{
+          item: 'basis-full sm:basis-1/2 lg:basis-1/3',
+          container: 'gap-4'
+        }"
+        class="overflow-hidden"
+        arrows
+      >
+        <div 
+          class="relative aspect-[4/3] overflow-hidden rounded-lg cursor-pointer group"
+          @click="selectEvent(item)"
         >
-          <!-- Event Icon -->
-          <div class="flex items-center gap-4 mb-4">
-            <div class="w-14 h-14 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-              <UIcon name="i-heroicons-flag" class="text-2xl text-white" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <h3 class="text-lg font-semibold text-highlighted truncate">
-                {{ event.name }}
+          <!-- Background Image -->
+          <img
+            :src="getEventImage(item)"
+            :alt="item.name"
+            class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          />
+          
+          <!-- Content Overlay -->
+          <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-6">
+            <div class="text-white space-y-3">
+              <h3 class="text-2xl font-bold group-hover:scale-105 transition-transform">
+                {{ item.name }}
               </h3>
-              <p v-if="event.date" class="text-sm text-muted">
-                {{ formatDate(event.date) }}
-              </p>
+              <div class="space-y-2 text-white/90">
+                <div v-if="item.date" class="flex items-center gap-2">
+                  <UIcon name="i-heroicons-calendar" class="flex-shrink-0 w-5 h-5" />
+                  <span class="text-base">{{ formatDate(item.date) }}</span>
+                </div>
+              </div>
+              <UButton
+                color="neutral"
+                variant="outline"
+                size="lg"
+                block
+                class="mt-4"
+                @click.stop="selectEvent(item)"
+              >
+                <UIcon name="i-heroicons-magnifying-glass" />
+                Cari Foto
+              </UButton>
             </div>
           </div>
-
-          <!-- Event Details -->
-          <div class="space-y-2">
-            <div v-if="event.location" class="flex items-center gap-2 text-sm text-muted">
-              <UIcon name="i-heroicons-map-pin" class="flex-shrink-0" />
-              <span class="truncate">{{ event.location }}</span>
-            </div>
-            <div v-if="event.description" class="text-sm text-muted line-clamp-2">
-              {{ event.description }}
-            </div>
-          </div>
-
-          <!-- Action Button -->
-          <template #footer>
-            <UButton
-              color="primary"
-              block
-              @click="selectEvent(event)"
-            >
-              <UIcon name="i-heroicons-magnifying-glass" />
-              Cari Foto
-            </UButton>
-          </template>
-        </UCard>
-      </div>
+          
+          <!-- Hover Effect -->
+        </div>
+      </UCarousel>
 
       <!-- Empty State -->
       <UCard v-else class="text-center py-12">
@@ -109,32 +121,76 @@
           Saat ini belum ada event yang tersedia
         </p>
       </UCard>
-
-      <!-- Info Section -->
-      <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="text-center p-6">
-          <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-            <UIcon name="i-heroicons-numbered-list" class="text-2xl text-primary" />
-          </div>
-          <h4 class="font-semibold text-highlighted mb-2">1. Pilih Event</h4>
-          <p class="text-sm text-muted">Pilih event race yang Anda ikuti</p>
-        </div>
-        <div class="text-center p-6">
-          <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-            <UIcon name="i-heroicons-hashtag" class="text-2xl text-primary" />
-          </div>
-          <h4 class="font-semibold text-highlighted mb-2">2. Masukkan Bib</h4>
-          <p class="text-sm text-muted">Input nomor bib Anda</p>
-        </div>
-        <div class="text-center p-6">
-          <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-            <UIcon name="i-heroicons-arrow-down-tray" class="text-2xl text-primary" />
-          </div>
-          <h4 class="font-semibold text-highlighted mb-2">3. Download Foto</h4>
-          <p class="text-sm text-muted">Temukan dan download foto Anda</p>
-        </div>
       </div>
+    </UContainer>
+
+    <!-- Features Section -->
+    <UContainer>
+      <div class="py-16">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl font-bold mb-4">Cara Menggunakan</h2>
+          <p class="text-gray-500 dark:text-gray-400">Tiga langkah mudah untuk menemukan foto race Anda</p>
+        </div>
+        
+        <UPageGrid>
+          <UPageCard
+            title="1. Pilih Event"
+            description="Pilih event race yang Anda ikuti dari daftar yang tersedia"
+            icon="i-heroicons-numbered-list"
+          />
+          <UPageCard
+            title="2. Masukkan Bib"
+            description="Input nomor bib yang Anda gunakan saat race"
+            icon="i-heroicons-hashtag"
+          />
+          <UPageCard
+            title="3. Download Foto"
+            description="Temukan dan download foto terbaik Anda"
+            icon="i-heroicons-arrow-down-tray"
+          />
+        </UPageGrid>
+      </div>
+    </UContainer>
+
+    <!-- Photo Showcase Marquee -->
+    <div class="py-16 overflow-hidden">
+      <UMarquee :speed="40" class="mb-14">
+        <div
+          v-for="(photo, index) in showcasePhotos.slice(0, 5)"
+          :key="index"
+          class="relative w-90 h-60 overflow-hidden rounded-lg"
+        >
+          <img
+            :src="photo.url"
+            :alt="photo.alt"
+            class="w-full h-full object-cover"
+          />
+        </div>
+      </UMarquee>
+
+      <UMarquee :speed="40" :reverse="true">
+        <div
+          v-for="(photo, index) in showcasePhotos.slice(5, 10)"
+          :key="index"
+          class="relative  w-90 h-60 overflow-hidden rounded-lg"
+        >
+          <img
+            :src="photo.url"
+            :alt="photo.alt"
+            class="w-full h-full object-cover"
+          />
+        </div>
+      </UMarquee>
     </div>
+
+    <!-- Footer -->
+    <UFooter>
+      <template #left>
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          © {{ new Date().getFullYear() }} Racetify Photo. All rights reserved.
+        </p>
+      </template>
+    </UFooter>
   </div>
 </template>
 
@@ -155,6 +211,85 @@ useHead({
 // State
 const events = ref<Event[]>([])
 const isLoading = ref(true)
+
+// Showcase photos for marquee
+const showcasePhotos = ref([
+  {
+    url: 'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?w=800&q=80',
+    alt: 'Marathon Runner',
+    event: 'Jakarta Marathon 2024',
+    location: 'Jakarta'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=800&q=80',
+    alt: 'Trail Runner',
+    event: 'Bromo Trail Run',
+    location: 'Bromo, Jawa Timur'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1513593771513-7b58b6c4af38?w=800&q=80',
+    alt: 'Finish Line',
+    event: 'Bali Marathon',
+    location: 'Bali'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1532444458054-01a7dd3e9fca?w=800&q=80',
+    alt: 'Group Running',
+    event: 'Color Run Indonesia',
+    location: 'Bandung'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80',
+    alt: 'Ultra Marathon',
+    event: 'Ultra Trail Indonesia',
+    location: 'Papua'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1486218119243-13883505764c?w=800&q=80',
+    alt: 'City Marathon',
+    event: 'Surabaya Marathon',
+    location: 'Surabaya'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&q=80',
+    alt: 'Mountain Trail',
+    event: 'Rinjani Trail Challenge',
+    location: 'Lombok'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1461897104016-0b3b00cc81ee?w=800&q=80',
+    alt: 'Night Run',
+    event: 'Electric Run Jakarta',
+    location: 'Jakarta'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1502904550040-7534597429ae?w=800&q=80',
+    alt: 'Beach Run',
+    event: 'Bali Beach Run',
+    location: 'Bali'
+  },
+  {
+    url: 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&q=80',
+    alt: 'City Run',
+    event: 'Yogyakarta Half Marathon',
+    location: 'Yogyakarta'
+  }
+])
+
+// Sample event images
+const eventImages = [
+  'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?w=800&q=80', // Marathon
+  'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=800&q=80', // Trail running
+  'https://images.unsplash.com/photo-1513593771513-7b58b6c4af38?w=800&q=80', // Finish line
+  'https://images.unsplash.com/photo-1532444458054-01a7dd3e9fca?w=800&q=80', // Group running
+  'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80', // Ultra marathon
+]
+
+// Get event image (cycle through sample images)
+const getEventImage = (event: Event) => {
+  const index = events.value.indexOf(event) % eventImages.length
+  return eventImages[index]
+}
 
 // Check authentication (optional - for showing different UI)
 const { fetchUser, isAuthenticated } = useUser()
