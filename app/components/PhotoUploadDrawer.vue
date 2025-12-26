@@ -2,8 +2,7 @@
   <!-- Floating Upload Button -->
   <div 
     v-if="event" 
-    class="fixed right-8 z-50 transition-all duration-300"
-    :class="uploadStats.total > 0 ? 'bottom-24' : 'bottom-8'"
+    class="fixed right-8 bottom-8 z-50 transition-all duration-300"
   >
     <UButton
       color="primary"
@@ -11,87 +10,18 @@
       class="shadow-lg"
       @click="showUploadDrawer = true"
     >
-      <UIcon name="i-lucide-upload" class="mr-2" />
-      Upload Photos
+      <UIcon 
+        :name="isUploading ? 'i-lucide-loader-circle' : 'i-lucide-upload'" 
+        class="mr-2"
+        :class="{ 'animate-spin': isUploading }"
+      />
+      <span v-if="isUploading">
+        Uploading... {{ uploadStats.success }} / {{ uploadStats.total }}
+      </span>
+      <span v-else>
+        Upload Photos
+      </span>
     </UButton>
-  </div>
-
-  <!-- Upload Progress Bar (Bottom) -->
-  <div 
-    v-if="uploadStats.total > 0" 
-    class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-2 border-primary-500 shadow-2xl z-40"
-  >
-    <div class="max-w-7xl mx-auto px-4 py-3">
-      <div class="flex items-center justify-between gap-4">
-        <div class="flex items-center gap-3 flex-1 min-w-0">
-          <UIcon 
-            name="i-lucide-loader-circle" 
-            class="w-5 h-5 text-primary-500 animate-spin flex-shrink-0"
-            v-if="isUploading"
-          />
-          <UIcon 
-            name="i-lucide-circle-check" 
-            class="w-5 h-5 text-success flex-shrink-0"
-            v-else-if="uploadStats.success === uploadStats.total"
-          />
-          <UIcon 
-            name="i-lucide-circle-alert" 
-            class="w-5 h-5 text-error flex-shrink-0"
-            v-else
-          />
-          
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 text-sm font-medium text-highlighted">
-              <span>{{ isUploading ? 'Uploading photos...' : 'Upload complete' }}</span>
-              <span class="text-muted">·</span>
-              <span class="text-success">{{ uploadStats.success }}</span>
-              <span class="text-muted">/</span>
-              <span>{{ uploadStats.total }}</span>
-            </div>
-            <div class="flex items-center gap-3 mt-1">
-              <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                <div 
-                  class="h-full bg-primary-500 transition-all duration-300"
-                  :style="{ width: `${(uploadStats.success / uploadStats.total) * 100}%` }"
-                ></div>
-              </div>
-              <span class="text-xs text-muted whitespace-nowrap">
-                {{ Math.round((uploadStats.success / uploadStats.total) * 100) }}%
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <UButton
-            v-if="uploadStats.error > 0"
-            color="error"
-            variant="soft"
-            size="sm"
-            @click="showUploadDrawer = true"
-          >
-            {{ uploadStats.error }} Failed
-          </UButton>
-          <UButton
-            color="neutral"
-            variant="ghost"
-            size="sm"
-            @click="showUploadDrawer = true"
-          >
-            View Details
-          </UButton>
-          <UButton
-            v-if="!isUploading"
-            color="neutral"
-            variant="ghost"
-            icon="i-lucide-x"
-            size="sm"
-            square
-            @click="clearQueue"
-          />
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- Upload Drawer -->
@@ -193,7 +123,7 @@
 
           <div class="space-y-2 max-h-96 overflow-y-auto">
             <div
-              v-for="[key, progress] in Array.from(uploadQueue)"
+              v-for="[key, progress] in reversedUploadQueue"
               :key="key"
               class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
             >
@@ -303,6 +233,11 @@ const showUploadDrawer = ref(false)
 const selectedLocation = ref<PhotoLocation | null>(props.initialLocation)
 const isDragging = ref(false)
 const fileInput = ref<HTMLInputElement>()
+
+// Computed - reverse upload queue to show newest first
+const reversedUploadQueue = computed(() => {
+  return Array.from(uploadQueue.value).reverse()
+})
 
 // Watch initial location changes
 watch(() => props.initialLocation, (newLocation) => {

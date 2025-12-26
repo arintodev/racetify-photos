@@ -332,10 +332,10 @@ const handleUploadComplete = async () => {
   if (currentView.value === 'locations') {
     await fetchLocationFolders()
   } else if (currentView.value === 'photos') {
-    // Reset pagination to trigger reload from NaturalGallery
+    // Reload photos from beginning
     currentOffset.value = 0
-    photos.value = []
     hasMorePhotos.value = true
+    await fetchPhotos(4, 0)
   }
 }
 
