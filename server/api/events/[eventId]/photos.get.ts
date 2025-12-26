@@ -6,6 +6,8 @@ import { serverSupabaseClient } from '#supabase/server'
  * 
  * Query params:
  * - location_id (optional): filter by location
+ * - limit (optional): number of photos to return (default: 1000)
+ * - offset (optional): number of photos to skip (default: 0)
  * 
  * Response:
  * - Array of Photo objects with event and location details
@@ -20,7 +22,10 @@ export default defineEventHandler(async (event) => {
     }
 
     const eventId = getRouterParam(event, 'eventId')
-    const locationId = getQuery(event).location_id as string | undefined
+    const query = getQuery(event)
+    const locationId = query.location_id as string | undefined
+    const limit = parseInt(query.limit as string) || 20
+    const offset = parseInt(query.offset as string) || 0
 
     if (!eventId) {
       throw createError({
@@ -37,7 +42,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // Build query
-    let query = supabase
+    let queryBuilder = supabase
       .from('photos')
       .select(`
         *,
@@ -47,13 +52,14 @@ export default defineEventHandler(async (event) => {
       .eq('photographer_id', user.id)
       .eq('event_id', eventId)
       .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
 
     // Filter by location if provided
     if (locationId) {
-      query = query.eq('location_id', locationId)
+      queryBuilder = queryBuilder.eq('location_id', locationId)
     }
 
-    const { data, error } = await query
+    const { data, error } = await queryBuilder
 
     if (error) {
       throw createError({
@@ -62,12 +68,19 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Transform response
-    const photos = (data || []).map((item: any) => ({
-      ...item,
-      event_name: item.events?.name,
-      location_name: item.photo_locations?.name
-    }))
+    // Transform response with public URLs
+    const photos = (data || []).map((item: any) => {
+      const { data: publicUrlData } = supabase.storage
+        .from('event-photos')
+        .getPublicUrl(item.photo_path)
+
+      return {
+        ...item,
+        public_url: publicUrlData.publicUrl,
+        event_name: item.events?.name,
+        location_name: item.photo_locations?.name
+      }
+    })
 
     return photos
 

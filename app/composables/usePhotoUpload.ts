@@ -71,8 +71,6 @@ export const usePhotoUpload = () => {
       // Prepare form data
       const formData = new FormData()
       formData.append('file', compressedFile, file.name)
-      formData.append('eventId', eventId)
-      formData.append('photographerId', photographerId)
       formData.append('fileName', file.name)
       if (locationId) {
         formData.append('locationId', locationId)
@@ -80,7 +78,7 @@ export const usePhotoUpload = () => {
 
       // Upload ke API
       const uploadResponse = await $fetch<{ success: boolean; photoPath?: string; jobId?: string; error?: string }>(
-        '/api/upload/photo',
+        `/api/events/${eventId}/photo`,
         {
           method: 'POST',
           body: formData,

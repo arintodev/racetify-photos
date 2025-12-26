@@ -13,10 +13,9 @@
               size="sm"
             />
             <div>
-              <h1 class="text-xl font-semibold text-highlighted">
+              <h1 class="text-lg font-semibold text-highlighted">
                 {{ event?.name || 'Loading...' }}
               </h1>
-              <p v-if="event?.location" class="text-sm text-muted">{{ event.location }}</p>
             </div>
           </div>
         </div>
@@ -75,7 +74,7 @@
                 size="lg"
                 class="flex-1"
                 :disabled="isSearching"
-                @keyup.enter="searchByBib"
+                @keyup.enter="() => searchByBib()"
               >
                 <template #leading>
                   <UIcon name="i-lucide-hash" class="w-5 h-5 text-muted" />
@@ -86,7 +85,7 @@
                 size="lg"
                 :loading="isSearching"
                 :disabled="!bibNumber || isSearching"
-                @click="searchByBib"
+                @click="() => searchByBib()"
               >
                 <UIcon name="i-lucide-search" class="mr-2" />
                 Search
@@ -185,7 +184,6 @@
         <p class="text-lg font-medium text-highlighted mb-2">Searching for your photos...</p>
         <p class="text-sm text-muted">This may take a few moments</p>
       </div>
-
       <!-- No Search Performed (Default State) -->
       <div v-else-if="!searchPerformed" class="text-center py-20">
         <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -249,32 +247,17 @@
             </UButton>
           </div>
 
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <div
-              v-for="photo in photos"
-              :key="photo.id"
-              class="group relative aspect-square bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary-500 transition-all"
-              @click="openPhotoDetail(photo)"
-            >
-              <img
-                :src="getPhotoUrl(photo.photo_path)"
-                :alt="`Photo ${photo.id}`"
-                class="w-full h-full object-cover"
-                loading="lazy"
-                @error="handleImageError"
-              />
-              
-              <!-- Hover Overlay -->
-              <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                <UIcon name="i-lucide-zoom-in" class="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
+          <NaturalGallery
+            :items="galleryItems"
+            :loading="isLoadingMore"
+            :lightbox="true"
+            :selectable="false"
+            @pagination="handlePagination"
+          />
 
-              <!-- Location Badge -->
-              <div v-if="photo.location_name" class="absolute bottom-2 left-2 right-2 bg-black/70 backdrop-blur-sm rounded px-2 py-1 text-xs text-white truncate opacity-0 group-hover:opacity-100 transition-opacity">
-                <UIcon name="i-lucide-map-pin" class="w-3 h-3 inline mr-1" />
-                {{ photo.location_name }}
-              </div>
-            </div>
+          <!-- Infinite Scroll Trigger -->
+          <div ref="scrollContainer" class="h-20 flex items-center justify-center mt-4">
+            <UIcon v-if="isLoadingMore" name="i-lucide-loader-circle" class="w-6 h-6 animate-spin text-primary-500" />
           </div>
         </div>
       </div>
@@ -292,7 +275,7 @@
           <!-- Photo Preview -->
           <div class="col-span-2 bg-black flex items-center justify-center">
             <img
-              :src="getPhotoUrl(selectedPhoto.photo_path)"
+              :src="selectedPhoto.public_url"
               :alt="`Photo ${selectedPhoto.id}`"
               class="max-w-full max-h-full object-contain"
             />
@@ -369,10 +352,47 @@ const showPhotoModal = ref(false)
 const isDragging = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
+// Pagination state
+const hasMorePhotos = ref(true)
+const isLoadingMore = ref(false)
+const scrollContainer = ref<HTMLElement | null>(null)
+const lastFetchedOffset = ref(-1)
+
+// Computed property for gallery items
+const galleryItems = computed(() => {
+  return photos.value.map(photo => ({
+    id: photo.id,
+    imageUrl: photo.public_url,
+    thumbnailUrl: photo.public_url,
+    alt: `Photo ${photo.id}`,
+    width: photo.width,
+    height: photo.height,
+    title: photo.location_name || '',
+    ...photo
+  }))
+})
+
 // Dynamic title
 useHead(() => ({
   title: event.value ? `${event.value.name} - Find Your Photos` : 'Find Your Photos - Racetify'
 }))
+
+/**
+ * Handle pagination from NaturalGallery
+ */
+const handlePagination = async (event: { offset: number; limit: number }) => {
+  if (isLoadingMore.value || !hasMorePhotos.value || !searchPerformed.value) return
+  
+  // Skip if offset is 0 (initial search already fetched this)
+  if (event.offset === 0) return
+  
+  // Prevent duplicate requests with same offset
+  if (event.offset === lastFetchedOffset.value) return
+  
+  if (searchMode.value === 'bib') {
+    await searchByBib(event.limit, event.offset)
+  }
+}
 
 // Fetch event data on mount
 onMounted(async () => {
@@ -394,26 +414,47 @@ const fetchEvent = async () => {
 /**
  * Search by bib number
  */
-const searchByBib = async () => {
+const searchByBib = async (limit = 4, offset = 0) => {
   if (!bibNumber.value.trim()) return
 
+  const isInitialSearch = offset === 0
+  
   try {
-    isSearching.value = true
     searchPerformed.value = true
     
-    const data = await $fetch<any[]>('/api/photos/search-by-bib', {
+    if (isInitialSearch) {
+      isSearching.value = true
+      photos.value = []
+      hasMorePhotos.value = true
+      lastFetchedOffset.value = -1
+    } else {
+      isLoadingMore.value = true
+    }
+    
+    const data = await $fetch<any[]>(`/api/events/${eventId}/search-by-bib`, {
       params: {
         bib: bibNumber.value.trim(),
-        eventId: eventId
+        limit: limit,
+        offset: offset
       }
     })
     
-    photos.value = data || []
+    if (isInitialSearch) {
+      photos.value = data || []
+    } else {
+      photos.value = [...photos.value, ...(data || [])]
+    }
+    
+    lastFetchedOffset.value = offset
+    hasMorePhotos.value = data && data.length === limit
   } catch (error) {
     console.error('Search failed:', error)
-    photos.value = []
+    if (isInitialSearch) {
+      photos.value = []
+    }
   } finally {
     isSearching.value = false
+    isLoadingMore.value = false
   }
 }
 
@@ -519,6 +560,7 @@ const resetSearch = () => {
   photos.value = []
   searchPerformed.value = false
   isSearching.value = false
+  lastFetchedOffset.value = -1
 }
 
 /**
@@ -549,7 +591,7 @@ const openPhotoDetail = (photo: any) => {
  * Download photo
  */
 const downloadPhoto = (photo: any) => {
-  const url = getPhotoUrl(photo.photo_path)
+  const url = photo.public_url
   const link = document.createElement('a')
   link.href = url
   link.download = `racetify-${eventId}-${photo.id}.jpg`

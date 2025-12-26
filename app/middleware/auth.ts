@@ -10,6 +10,10 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   
   // Redirect ke login jika belum authenticated
   if (!isAuthenticated.value) {
-    return navigateTo('/login')
+    // Save redirect URL to return after login
+    return navigateTo({
+      path: '/login',
+      query: { redirect: to.fullPath }
+    })
   }
 })

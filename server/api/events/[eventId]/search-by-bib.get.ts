@@ -2,12 +2,14 @@ import { serverSupabaseClient } from '#supabase/server'
 import type { PhotoWithBibs } from '~/types'
 
 /**
- * API endpoint untuk search foto berdasarkan bib number
+ * API endpoint untuk search foto berdasarkan bib number dalam event tertentu
  * Public endpoint - tidak perlu authentication
+ * 
+ * Route params:
+ * - eventId: string (ID event yang dicari)
  * 
  * Query params:
  * - bib: string (bib number yang dicari)
- * - eventId: string (optional, untuk filter berdasarkan event)
  * - limit: number (optional, default: 1000)
  * - offset: number (optional, default: 0)
  * 
@@ -16,11 +18,19 @@ import type { PhotoWithBibs } from '~/types'
  */
 export default defineEventHandler(async (event): Promise<PhotoWithBibs[]> => {
   try {
+    const eventId = getRouterParam(event, 'eventId')
     const query = getQuery(event)
     const bibNumber = query.bib as string
-    const eventId = query.eventId as string | undefined
     const limit = parseInt(query.limit as string) || 1000
     const offset = parseInt(query.offset as string) || 0
+
+    // Validate event ID
+    if (!eventId) {
+      throw createError({
+        statusCode: 400,
+        message: 'Event ID is required'
+      })
+    }
 
     // Validate bib number
     if (!bibNumber) {
@@ -33,26 +43,30 @@ export default defineEventHandler(async (event): Promise<PhotoWithBibs[]> => {
     // Get Supabase client (no auth required for public search)
     const supabase: any = await serverSupabaseClient(event)
 
-    // Build query untuk search photos berdasarkan bib number
+    // Build query untuk search photos berdasarkan bib number dan event
     // Join dengan photo_bibs table
-    let photoQuery = supabase
+    const photoQuery = supabase
       .from('photos')
       .select(`
-        *,
+        id,
+        status,
+        photo_path,
+        event_id,
+        created_at,
+        location_id,
         photo_bibs!inner (
           id,
           bib_number
+        ),
+        photo_locations (
+          name
         )
       `)
       .eq('photo_bibs.bib_number', bibNumber)
+      .eq('event_id', eventId)
       .eq('status', 'completed') // Only show completed/processed photos
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
-
-    // Filter by event if provided
-    if (eventId) {
-      photoQuery = photoQuery.eq('event_id', eventId)
-    }
 
     const { data, error } = await photoQuery
 
@@ -76,16 +90,12 @@ export default defineEventHandler(async (event): Promise<PhotoWithBibs[]> => {
         return {
           id: item.id,
           event_id: item.event_id,
-          photographer_id: item.photographer_id,
-          photo_path: item.photo_path,
           location_id: item.location_id,
+          location_name: item.photo_locations?.name,
           status: item.status,
           created_at: item.created_at,
-          updated_at: item.updated_at,
-          photo_bibs: item.photo_bibs,
-          public_url: urlData.publicUrl,
-          event: item.events,
-          location: item.photo_locations
+          bib_numbers: item.photo_bibs.map((b: any) => b.bib_number),
+          public_url: urlData.publicUrl
         }
       })
     )

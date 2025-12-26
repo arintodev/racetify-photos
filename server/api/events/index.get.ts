@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
     const { data: events, error: fetchError } = await supabase
       .from('events')
       .select('id, name, start_date, end_date, location, created_at')
+      .eq('is_private_photo', false)
       .order('created_at', { ascending: false })
 
     if (fetchError) {

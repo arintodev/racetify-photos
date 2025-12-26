@@ -1,33 +1,5 @@
 <template>
   <div>
-    <!-- Header -->
-    <UHeader>
-      <template #left>
-        <div>
-          <h1 class="text-lg font-bold">Racetify Photo</h1>
-        </div>
-      </template>
-
-      <template #right>
-        <UButton
-          v-if="isAuthenticated"
-          color="primary"
-          variant="solid"
-          to="/photographer"
-          icon="i-heroicons-photo"
-          label="Gallery"
-        />
-        <UButton
-          v-else
-          color="primary"
-          variant="outline"
-          to="/login"
-          icon="i-heroicons-arrow-right-on-rectangle"
-          label="Login"
-        />
-      </template>
-    </UHeader>
-
     <!-- Hero Section -->
     <UPageHero
       title="Temukan Foto Race Anda"
@@ -182,15 +154,6 @@
         </div>
       </UMarquee>
     </div>
-
-    <!-- Footer -->
-    <UFooter>
-      <template #left>
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          © {{ new Date().getFullYear() }} Racetify Photo. All rights reserved.
-        </p>
-      </template>
-    </UFooter>
   </div>
 </template>
 
@@ -291,8 +254,8 @@ const getEventImage = (event: Event) => {
   return eventImages[index]
 }
 
-// Check authentication (optional - for showing different UI)
-const { fetchUser, isAuthenticated } = useUser()
+// Check authentication
+const { isAuthenticated } = useUser()
 
 // Fetch events
 const fetchEvents = async () => {
@@ -331,7 +294,6 @@ const selectEvent = (event: Event) => {
 
 // On mounted
 onMounted(async () => {
-  await fetchUser()
   await fetchEvents()
 })
 </script>

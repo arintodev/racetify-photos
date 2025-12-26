@@ -113,17 +113,24 @@ useHead({
 })
 
 const { auth } = useSupabase()
+const route = useRoute()
 const loading = ref(false)
 const error = ref('')
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 
+// Get redirect URL from query params
+const redirectUrl = computed(() => {
+  const redirect = route.query.redirect as string
+  return redirect && redirect !== '/login' ? redirect : '/photographer'
+})
+
 // Check if already logged in
 onMounted(async () => {
   const { data: { session } } = await auth.getSession()
   if (session) {
-    navigateTo('/photographer')
+    navigateTo(redirectUrl.value)
   }
 })
 
@@ -143,7 +150,7 @@ const handleLoginWithEmail = async () => {
     if (signInError) throw signInError
 
     if (data.session) {
-      navigateTo('/gallery')
+      navigateTo(redirectUrl.value)
     }
 
   } catch (err: any) {
@@ -163,7 +170,7 @@ const handleLoginWithGoogle = async () => {
     const { error: signInError } = await auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/upload`
+        redirectTo: `${window.location.origin}${redirectUrl.value}`
       }
     })
 

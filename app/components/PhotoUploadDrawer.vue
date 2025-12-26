@@ -1,0 +1,420 @@
+<template>
+  <!-- Floating Upload Button -->
+  <div 
+    v-if="event" 
+    class="fixed right-8 z-50 transition-all duration-300"
+    :class="uploadStats.total > 0 ? 'bottom-24' : 'bottom-8'"
+  >
+    <UButton
+      color="primary"
+      size="xl"
+      class="shadow-lg"
+      @click="showUploadDrawer = true"
+    >
+      <UIcon name="i-lucide-upload" class="mr-2" />
+      Upload Photos
+    </UButton>
+  </div>
+
+  <!-- Upload Progress Bar (Bottom) -->
+  <div 
+    v-if="uploadStats.total > 0" 
+    class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-2 border-primary-500 shadow-2xl z-40"
+  >
+    <div class="max-w-7xl mx-auto px-4 py-3">
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <UIcon 
+            name="i-lucide-loader-circle" 
+            class="w-5 h-5 text-primary-500 animate-spin flex-shrink-0"
+            v-if="isUploading"
+          />
+          <UIcon 
+            name="i-lucide-circle-check" 
+            class="w-5 h-5 text-success flex-shrink-0"
+            v-else-if="uploadStats.success === uploadStats.total"
+          />
+          <UIcon 
+            name="i-lucide-circle-alert" 
+            class="w-5 h-5 text-error flex-shrink-0"
+            v-else
+          />
+          
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 text-sm font-medium text-highlighted">
+              <span>{{ isUploading ? 'Uploading photos...' : 'Upload complete' }}</span>
+              <span class="text-muted">·</span>
+              <span class="text-success">{{ uploadStats.success }}</span>
+              <span class="text-muted">/</span>
+              <span>{{ uploadStats.total }}</span>
+            </div>
+            <div class="flex items-center gap-3 mt-1">
+              <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                <div 
+                  class="h-full bg-primary-500 transition-all duration-300"
+                  :style="{ width: `${(uploadStats.success / uploadStats.total) * 100}%` }"
+                ></div>
+              </div>
+              <span class="text-xs text-muted whitespace-nowrap">
+                {{ Math.round((uploadStats.success / uploadStats.total) * 100) }}%
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <UButton
+            v-if="uploadStats.error > 0"
+            color="error"
+            variant="soft"
+            size="sm"
+            @click="showUploadDrawer = true"
+          >
+            {{ uploadStats.error }} Failed
+          </UButton>
+          <UButton
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            @click="showUploadDrawer = true"
+          >
+            View Details
+          </UButton>
+          <UButton
+            v-if="!isUploading"
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-x"
+            size="sm"
+            square
+            @click="clearQueue"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Drawer -->
+  <USlideover 
+    v-model:open="showUploadDrawer" 
+    title="Upload Photos"
+    :ui="{ content: 'max-w-2xl' }"
+  >
+    <template #body>
+      <div class="space-y-6">
+        <!-- Selected Event Info -->
+        <div v-if="event" class="bg-primary-50 dark:bg-primary-900/10 rounded-lg p-4 border border-primary-200 dark:border-primary-800">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center flex-shrink-0">
+              <UIcon name="i-lucide-calendar" class="w-5 h-5 text-white" />
+            </div>
+            <div class="flex-1">
+              <div class="text-sm font-medium">Uploading to</div>
+              <div class="font-semibold text-highlighted">{{ event.name }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Location Selection -->
+        <div v-if="event">
+          <label class="text-sm font-medium text-highlighted mb-2 block">Location (Optional)</label>
+          <USelectMenu
+            v-model="selectedLocation"
+            :items="locations"
+            label-key="name"
+            placeholder="Choose location... (optional)"
+            class="w-full"
+            :loading="loadingLocations"
+          />
+        </div>
+
+        <!-- Dropzone -->
+        <div>
+          <label class="text-sm font-medium text-highlighted mb-2 block">Photos</label>
+          <div
+            class="border-2 border-dashed rounded-lg p-8 text-center transition-colors"
+            :class="[
+              isDragging
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10'
+                : 'border-gray-300 dark:border-gray-700 hover:border-gray-400'
+            ]"
+            @dragover.prevent="isDragging = true"
+            @dragleave.prevent="isDragging = false"
+            @drop.prevent="handleDrop"
+          >
+            <UIcon name="i-lucide-image" class="w-12 h-12 mx-auto mb-3 text-dimmed" />
+            <p class="text-sm font-medium text-highlighted mb-1">
+              Drag & drop photos here
+            </p>
+            <p class="text-xs text-muted mb-3">or</p>
+            <UButton
+              color="primary"
+              size="sm"
+              @click="triggerFileInput"
+              :disabled="isUploading"
+            >
+              <UIcon name="i-lucide-folder-open" class="mr-2" />
+              Browse Files
+            </UButton>
+            <input
+              ref="fileInput"
+              type="file"
+              multiple
+              accept="image/*"
+              class="hidden"
+              @change="handleFileSelect"
+            />
+            <p class="text-xs text-muted mt-3">
+              Photos will be auto-compressed (max 1920px, JPEG)
+            </p>
+          </div>
+        </div>
+
+        <!-- Upload Queue -->
+        <div v-if="uploadStats.total > 0" class="border-t border-gray-200 dark:border-gray-700 pt-6">
+          <div class="grid grid-cols-4 gap-3 mb-4">
+            <div class="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 text-center">
+              <div class="text-lg font-bold text-highlighted">{{ uploadStats.total }}</div>
+              <div class="text-xs text-muted">Total</div>
+            </div>
+            <div class="bg-success/10 rounded-lg p-3 text-center">
+              <div class="text-lg font-bold text-success">{{ uploadStats.success }}</div>
+              <div class="text-xs text-success">Success</div>
+            </div>
+            <div class="bg-info/10 rounded-lg p-3 text-center">
+              <div class="text-lg font-bold text-info">{{ uploadStats.uploading }}</div>
+              <div class="text-xs text-info">Uploading</div>
+            </div>
+            <div class="bg-error/10 rounded-lg p-3 text-center">
+              <div class="text-lg font-bold text-error">{{ uploadStats.error }}</div>
+              <div class="text-xs text-error">Failed</div>
+            </div>
+          </div>
+
+          <div class="space-y-2 max-h-96 overflow-y-auto">
+            <div
+              v-for="[key, progress] in Array.from(uploadQueue)"
+              :key="key"
+              class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
+            >
+              <div class="flex items-center gap-3">
+                <UIcon
+                  v-if="progress.status === 'success'"
+                  name="i-lucide-circle-check"
+                  class="w-4 h-4 text-success flex-shrink-0"
+                />
+                <UIcon
+                  v-else-if="progress.status === 'error'"
+                  name="i-lucide-circle-x"
+                  class="w-4 h-4 text-error flex-shrink-0"
+                />
+                <UIcon
+                  v-else-if="progress.status === 'uploading' || progress.status === 'compressing'"
+                  name="i-lucide-loader-circle"
+                  class="w-4 h-4 text-info animate-spin flex-shrink-0"
+                />
+                <UIcon
+                  v-else
+                  name="i-lucide-clock"
+                  class="w-4 h-4 text-dimmed flex-shrink-0"
+                />
+
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-highlighted truncate">
+                    {{ progress.file.name }}
+                  </p>
+                  <p v-if="progress.error" class="text-xs text-error mt-1">
+                    {{ progress.error }}
+                  </p>
+                </div>
+
+                <span
+                  class="text-xs font-medium"
+                  :class="getUploadStatusColor(progress.status)"
+                >
+                  {{ getUploadStatusText(progress.status) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-2 mt-4">
+            <UButton
+              v-if="uploadStats.error > 0"
+              color="warning"
+              variant="soft"
+              size="sm"
+              block
+              @click="handleRetryFailed"
+              :disabled="isUploading"
+            >
+              Retry Failed ({{ uploadStats.error }})
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              block
+              @click="clearQueue"
+              :disabled="isUploading"
+            >
+              Clear All
+            </UButton>
+          </div>
+        </div>
+      </div>
+    </template>
+  </USlideover>
+</template>
+
+<script setup lang="ts">
+import type { Event, PhotoLocation } from '~/types'
+
+interface Props {
+  event: Event | null
+  locations?: PhotoLocation[]
+  loadingLocations?: boolean
+  initialLocation?: PhotoLocation | null
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  locations: () => [],
+  loadingLocations: false,
+  initialLocation: null
+})
+
+const emit = defineEmits<{
+  'upload-complete': []
+}>()
+
+// Composables
+const user = useSupabaseUser()
+const { 
+  uploadQueue, 
+  isUploading, 
+  uploadPhotosWithConcurrency,
+  uploadStats,
+  clearQueue,
+  retryFailed
+} = usePhotoUpload()
+
+// State
+const showUploadDrawer = ref(false)
+const selectedLocation = ref<PhotoLocation | null>(props.initialLocation)
+const isDragging = ref(false)
+const fileInput = ref<HTMLInputElement>()
+
+// Watch initial location changes
+watch(() => props.initialLocation, (newLocation) => {
+  selectedLocation.value = newLocation
+})
+
+// Watch upload completion to emit event
+watch(() => uploadStats.value.success, (newCount, oldCount) => {
+  if (newCount > oldCount) {
+    emit('upload-complete')
+  }
+})
+
+/**
+ * Handle file drop
+ */
+const handleDrop = (event: DragEvent) => {
+  isDragging.value = false
+  
+  const files = Array.from(event.dataTransfer?.files || [])
+  const imageFiles = files.filter(file => file.type.startsWith('image/'))
+  
+  if (imageFiles.length > 0 && user.value && props.event) {
+    startUpload(imageFiles)
+  }
+}
+
+/**
+ * Trigger file input click
+ */
+const triggerFileInput = () => {
+  fileInput.value?.click()
+}
+
+/**
+ * Handle file select from input
+ */
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const files = Array.from(target.files || [])
+  
+  if (files.length > 0 && user.value && props.event) {
+    startUpload(files)
+  }
+  
+  if (target) {
+    target.value = ''
+  }
+}
+
+/**
+ * Start upload process
+ */
+const startUpload = async (files: File[]) => {
+  if (!user.value || !props.event) return
+
+  try {
+    await uploadPhotosWithConcurrency(
+      files,
+      props.event.id,
+      user.value.sub,
+      3,
+      selectedLocation.value?.id
+    )
+  } catch (error) {
+    console.error('Upload failed:', error)
+  }
+}
+
+/**
+ * Retry failed uploads
+ */
+const handleRetryFailed = async () => {
+  if (!user.value || !props.event) return
+  
+  await retryFailed(props.event.id, user.value.sub, selectedLocation.value?.id)
+}
+
+/**
+ * Get upload status color
+ */
+const getUploadStatusColor = (status: string) => {
+  switch (status) {
+    case 'success':
+      return 'text-success'
+    case 'error':
+      return 'text-error'
+    case 'uploading':
+    case 'compressing':
+      return 'text-info'
+    default:
+      return 'text-muted'
+  }
+}
+
+/**
+ * Get upload status text
+ */
+const getUploadStatusText = (status: string) => {
+  switch (status) {
+    case 'idle':
+      return 'Waiting'
+    case 'compressing':
+      return 'Compressing'
+    case 'uploading':
+      return 'Uploading'
+    case 'success':
+      return 'Done'
+    case 'error':
+      return 'Failed'
+    default:
+      return status
+  }
+}
+</script>
