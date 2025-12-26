@@ -72,7 +72,6 @@
             @dragleave.prevent="isDragging = false"
             @drop.prevent="handleDrop"
           >
-            <UIcon name="i-lucide-image" class="w-12 h-12 mx-auto mb-3 text-dimmed" />
             <p class="text-sm font-medium text-highlighted mb-1">
               Drag & drop photos here
             </p>
@@ -121,6 +120,30 @@
             </div>
           </div>
 
+          <div class="flex gap-2 mb-4">
+            <UButton
+              v-if="uploadStats.error > 0"
+              color="warning"
+              variant="soft"
+              size="sm"
+              block
+              @click="handleRetryFailed"
+              :disabled="isUploading"
+            >
+              Retry Failed ({{ uploadStats.error }})
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              block
+              @click="clearQueue"
+              :disabled="isUploading"
+            >
+              Clear All
+            </UButton>
+          </div>
+
           <div class="space-y-2 max-h-96 overflow-y-auto">
             <div
               v-for="[key, progress] in reversedUploadQueue"
@@ -166,30 +189,6 @@
                 </span>
               </div>
             </div>
-          </div>
-
-          <div class="flex gap-2 mt-4">
-            <UButton
-              v-if="uploadStats.error > 0"
-              color="warning"
-              variant="soft"
-              size="sm"
-              block
-              @click="handleRetryFailed"
-              :disabled="isUploading"
-            >
-              Retry Failed ({{ uploadStats.error }})
-            </UButton>
-            <UButton
-              color="neutral"
-              variant="ghost"
-              size="sm"
-              block
-              @click="clearQueue"
-              :disabled="isUploading"
-            >
-              Clear All
-            </UButton>
           </div>
         </div>
       </div>
