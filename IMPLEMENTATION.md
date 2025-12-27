@@ -322,6 +322,21 @@ SUPABASE_SERVICE_KEY=eyJhbGc...
 
 ---
 
+## 🖼️ Watermark on Upload
+
+- Server-side watermarking is applied on photo upload when an active configuration exists in `event_watermarks` for the given `event_id`.
+- Endpoints: `/api/events/:eventId/photo` and `/api/upload/photo`.
+- Config fields:
+   - `image_path`: Storage path `bucket/path/to.png` or public URL.
+   - `mode`: `single` | `repeat` | `diagonal`.
+   - `scale_ratio`: Relative to image width.
+   - `opacity`, `rotation`, `position`, `margin_ratio`.
+   - `gap_ratio`, `offset_ratio_x`, `offset_ratio_y` for tiling modes.
+- Implementation: `server/utils/watermark.ts` using Sharp composite.
+- Fallback: If watermarking fails or no active config, original image is uploaded.
+
+---
+
 ## 📚 References
 
 - [Nuxt 4 Docs](https://nuxt.com)

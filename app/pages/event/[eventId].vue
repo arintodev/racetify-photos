@@ -25,19 +25,19 @@
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Search Section -->
-      <div class="mb-8 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-        <div class="flex items-start gap-4 mb-6">
-          <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <UIcon name="i-lucide-search" class="w-6 h-6 text-primary-500" />
+      <div class="mb-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="w-11 h-11 bg-primary-100 dark:bg-primary-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <UIcon name="i-lucide-search" class="w-5 h-5 text-primary-500" />
           </div>
           <div>
-            <h2 class="text-lg font-semibold text-highlighted mb-1">Find Your Race Photos</h2>
+            <h2 class="text-lg font-semibold text-highlighted">Find Your Race Photos</h2>
             <p class="text-sm text-muted">Search by bib number or upload a selfie to find photos</p>
           </div>
         </div>
 
         <!-- Search Tabs -->
-        <div class="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex gap-2 mb-4 border-b border-gray-200 dark:border-gray-700">
           <button
             class="px-4 py-2 text-sm font-medium transition-colors"
             :class="searchMode === 'bib' 
@@ -63,9 +63,6 @@
         <!-- Bib Search Form -->
         <div v-if="searchMode === 'bib'" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-highlighted mb-2">
-              Bib Number
-            </label>
             <div class="flex gap-2">
               <UInput
                 v-model="bibNumber"

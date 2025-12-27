@@ -1,6 +1,6 @@
 import { serverSupabaseClient } from '#supabase/server'
 import sizeOf from 'image-size'
-import type { UploadResponse } from '~/types'
+import type { UploadResponse } from '../../../../types'
 
 /**
  * API endpoint untuk upload foto ke Supabase Storage
@@ -78,7 +78,7 @@ export default defineEventHandler(async (event): Promise<UploadResponse> => {
     const uniqueFileName = `${timestamp}_${fileName}`
 
     // Construct storage path
-    const photoPath = `event_${eventId}/${photographerId}/${uniqueFileName}`
+    const photoPath = `${eventId}/${photographerId}/${uniqueFileName}`
 
     // Upload ke Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase

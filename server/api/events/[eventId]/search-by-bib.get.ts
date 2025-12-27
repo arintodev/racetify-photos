@@ -44,7 +44,7 @@ export default defineEventHandler(async (event): Promise<PhotoWithBibs[]> => {
     const supabase: any = await serverSupabaseClient(event)
 
     // Build query untuk search photos berdasarkan bib number dan event
-    // Join dengan photo_bibs table
+    // Join dengan photo_bibs table atau search di bib_string column
     const photoQuery = supabase
       .from('photos')
       .select(`
@@ -56,15 +56,16 @@ export default defineEventHandler(async (event): Promise<PhotoWithBibs[]> => {
         location_id,
         photo_bibs!inner (
           id,
+          bib_string,
           bib_number
         ),
         photo_locations (
           name
         )
       `)
-      .eq('photo_bibs.bib_number', bibNumber)
+      .or(`bib_string.eq.${bibNumber},bib_number.eq.${bibNumber}`, { referencedTable: 'photo_bibs' })
       .eq('event_id', eventId)
-      .eq('status', 'completed') // Only show completed/processed photos
+      .eq('status', 'completed')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 

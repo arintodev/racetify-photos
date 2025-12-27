@@ -22,7 +22,7 @@ export const usePhotoUpload = () => {
       maxWidthOrHeight: 1920,
       useWebWorker: true,
       fileType: 'image/jpeg',
-      initialQuality: 0.85
+      initialQuality: 0.90
     }
 
     try {
