@@ -321,7 +321,6 @@
 </template>
 
 <script setup lang="ts">
-import { f } from 'vue-router/dist/router-CWoNjPRp.mjs'
 import type { Event } from '~/types'
 
 // No auth required - public page
