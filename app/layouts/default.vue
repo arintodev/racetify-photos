@@ -42,7 +42,7 @@
     <UFooter>
       <template #left>
         <p class="text-sm text-gray-500 dark:text-gray-400">
-          © {{ new Date().getFullYear() }} Racetify Photo. All rights reserved.
+          © {{ new Date().getFullYear() }} Racetify. All rights reserved.
         </p>
       </template>
     </UFooter>

@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
     // Fetch events dari database
     const { data: events, error: fetchError } = await supabase
       .from('events')
-      .select('id, name, start_date, end_date, location, created_at')
+      .select('id, name, start_date, end_date, location, created_at', 'photo_banner_path')
       .eq('is_private_photo', false)
       .order('created_at', { ascending: false })
 
@@ -27,7 +27,23 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    return events as Event[]
+    const results = events.map((item: any) => {
+      let bannerUrl = undefined;
+      if (item.photo_banner_path) {
+        const { data: publicUrlData } = supabase.storage
+          .from('event-assets')
+          .getPublicUrl(item.photo_banner_path)
+
+        bannerUrl = publicUrlData?.publicUrl
+      }
+
+      return {
+        ...item,
+        photo_banner_url: bannerUrl,
+      }
+    })
+
+    return results as Event[]
 
   } catch (error: any) {
     console.error('Get events error:', error)

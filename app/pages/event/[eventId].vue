@@ -1,38 +1,47 @@
 <template>
   <div class="min-h-screen bg-white dark:bg-gray-900">
-    <!-- Header -->
-    <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-4">
-            <UButton
-              color="neutral"
-              variant="ghost"
-              icon="i-lucide-arrow-left"
-              to="/"
-              size="sm"
-            />
-            <div>
-              <h1 class="text-lg font-semibold text-highlighted">
-                {{ event?.name || 'Loading...' }}
-              </h1>
-            </div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-arrow-left"
+            to="/"
+            size="sm"
+          />
+          <div>
+            <h1 class="text-lg font-semibold text-highlighted">
+              {{ event?.name || 'Loading...' }}
+            </h1>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
+      <!-- Banner Section -->
+      <div class="mb-6" v-if="event?.photo_banner_url">
+        <div
+          class="w-full bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center overflow-hidden"
+        >
+          <img
+            :src="event.photo_banner_url"
+            :alt="`${event.name} Banner`"
+            class="w-full h-full object-cover"
+            @error="handleImageError"
+          />
+        </div>
+      </div>
       <!-- Search Section -->
       <div class="mb-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <div class="flex items-start gap-4 mb-4">
-          <div class="w-11 h-11 bg-primary-100 dark:bg-primary-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <UIcon name="i-lucide-search" class="w-5 h-5 text-primary-500" />
+        <div class="flex items-center gap-4 mb-4">
+          <div class="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <UIcon name="i-lucide-search" class="w-4 h-4 text-primary-500" />
           </div>
           <div>
             <h2 class="text-lg font-semibold text-highlighted">Find Your Race Photos</h2>
-            <p class="text-sm text-muted">Search by bib number or upload a selfie to find photos</p>
           </div>
         </div>
 
@@ -47,16 +56,6 @@
           >
             <UIcon name="i-lucide-hash" class="mr-2" />
             Search by Bib
-          </button>
-          <button
-            class="px-4 py-2 text-sm font-medium transition-colors"
-            :class="searchMode === 'selfie' 
-              ? 'text-primary-500 border-b-2 border-primary-500' 
-              : 'text-muted hover:text-highlighted'"
-            @click="searchMode = 'selfie'"
-          >
-            <UIcon name="i-lucide-camera" class="mr-2" />
-            Search by Selfie
           </button>
         </div>
 
@@ -183,7 +182,7 @@
       </div>
       <!-- No Search Performed (Default State) -->
       <div v-else-if="!searchPerformed" class="text-center py-20">
-        <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center mx-auto mb-4 justify-center">
           <UIcon name="i-lucide-image-off" class="w-10 h-10 text-gray-400" />
         </div>
         <h3 class="text-lg font-medium text-highlighted mb-2">No photos to display</h3>
@@ -322,6 +321,7 @@
 </template>
 
 <script setup lang="ts">
+import { f } from 'vue-router/dist/router-CWoNjPRp.mjs'
 import type { Event } from '~/types'
 
 // No auth required - public page
@@ -408,11 +408,42 @@ const fetchEvent = async () => {
   }
 }
 
+const fetchPublicPhotos = async (limit = 10, offset = 0) => {
+  const isInitialSearch = offset === 0
+  
+  if (isInitialSearch) {
+    photos.value = []
+    hasMorePhotos.value = true
+    lastFetchedOffset.value = -1
+  } else {
+    isLoadingMore.value = true
+  }
+
+  try {
+    const data = await $fetch<Event>(`/api/events/${eventId}/public-photos`, {
+      params: {
+        bib: bibNumber.value.trim(),
+        limit: limit,
+        offset: offset
+      }
+    })
+    if (isInitialSearch) {
+      photos.value = data || []
+    } else {
+      photos.value = [...photos.value, ...(data || [])]
+    }
+  } catch (error) {
+    console.error('Failed to fetch photos:', error)
+  }
+}
+
 /**
  * Search by bib number
  */
-const searchByBib = async (limit = 4, offset = 0) => {
-  if (!bibNumber.value.trim()) return
+const searchByBib = async (limit = 10, offset = 0) => {
+  if (!bibNumber.value.trim()) {
+    return
+  }
 
   const isInitialSearch = offset === 0
   

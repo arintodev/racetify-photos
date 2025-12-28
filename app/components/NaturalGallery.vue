@@ -165,7 +165,6 @@ const updateGallery = async (items: GalleryItem[]) => {
         enlargedSrc: item.imageUrl,
         enlargedWidth: width,
         enlargedHeight: height,
-        title: item.title || item.alt || '',
       }
     })
   )

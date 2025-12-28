@@ -6,6 +6,8 @@ export interface Event {
   date?: string
   location?: string
   description?: string
+  photo_banner_path?: string,
+  photo_banner_url?: string,
   created_at: string
 }
 
