@@ -3,7 +3,7 @@
     <UHeader>
       <template #left>
         <NuxtLink to="/" class="flex items-center">
-          <h1 class="text-lg font-bold">Racetify Photo</h1>
+          <img src="/logo.png" alt="Racetify Logo" class="h-8 mr-2" />
         </NuxtLink>
       </template>
 
