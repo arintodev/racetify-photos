@@ -51,8 +51,8 @@ export default defineEventHandler(async (event) => {
         location_id,
         created_at
       `)
-      .or("ocr_result.is.null,ocr_result.eq.''")
-      // .eq('status', 'completed')
+      .or("ocr_result.is.null,ocr_result.eq.")
+      .eq('status', 'completed')
       .eq('event_id', eventId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)

@@ -74,7 +74,7 @@ const userMenuItems = computed(() => [
   }],
   [{
     label: 'Photographer',
-    icon: 'i-heroicons-photo',
+    icon: 'i-heroicons-camera',
     to: '/photographer'
   }],
   [{

@@ -22,7 +22,7 @@
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
       <!-- Banner Section -->
-      <div class="mb-6" v-if="event?.photo_banner_url">
+      <div class="mb-4 md:mb-6" v-if="event?.photo_banner_url">
         <div
           class="w-full bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center overflow-hidden"
         >
@@ -37,11 +37,9 @@
       <!-- Search Section -->
       <div class="mb-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <div class="flex items-center gap-4 mb-4">
-          <div class="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <UIcon name="i-lucide-search" class="w-4 h-4 text-primary-500" />
-          </div>
+          <UIcon name="i-lucide-search" class="w-4 h-4 text-primary-500" />
           <div>
-            <h2 class="text-lg font-semibold text-highlighted">Find Your Race Photos</h2>
+            <h2 class="font-semibold text-highlighted">Find Your Race Photos</h2>
           </div>
         </div>
 
@@ -181,16 +179,40 @@
         <p class="text-sm text-muted">This may take a few moments</p>
       </div>
       <!-- No Search Performed (Default State) -->
-      <div v-else-if="!searchPerformed" class="text-center py-20">
-        <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center mx-auto mb-4 justify-center">
-          <UIcon name="i-lucide-image-off" class="w-10 h-10 text-gray-400" />
+      <div v-else-if="!searchPerformed">
+        <div v-if="photos.length === 0" class="text-center py-20">
+          <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center mx-auto mb-4 justify-center">
+            <UIcon name="i-lucide-image-off" class="w-10 h-10 text-gray-400" />
+          </div>
+          <h3 class="text-lg font-medium text-highlighted mb-2">No photos to display</h3>
+          <p class="text-muted">
+            {{ searchMode === 'bib' 
+              ? 'Enter your bib number above to find your race photos' 
+              : 'Upload a selfie to find photos where you appear' }}
+          </p>
         </div>
-        <h3 class="text-lg font-medium text-highlighted mb-2">No photos to display</h3>
-        <p class="text-muted">
-          {{ searchMode === 'bib' 
-            ? 'Enter your bib number above to find your race photos' 
-            : 'Upload a selfie to find photos where you appear' }}
-        </p>
+        <div v-else>
+          <div class="mb-6 flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-semibold text-highlighted mb-1">
+                {{ photos.length }} {{ photos.length === 1 ? 'Photo' : 'Photos' }}
+              </h3>
+              <p class="text-sm text-muted">
+                All public photos for this event
+              </p>
+            </div>
+          </div>
+          <NaturalGallery
+            :items="galleryItems"
+            :loading="isLoadingMore"
+            :lightbox="true"
+            :selectable="false"
+            @pagination="handlePagination"
+          />
+          <div ref="scrollContainer" class="h-20 flex items-center justify-center mt-4">
+            <UIcon v-if="isLoadingMore" name="i-lucide-loader-circle" class="w-6 h-6 animate-spin text-primary-500" />
+          </div>
+        </div>
       </div>
 
       <!-- Search Results -->
@@ -393,6 +415,9 @@ const handlePagination = async (event: { offset: number; limit: number }) => {
 // Fetch event data on mount
 onMounted(async () => {
   await fetchEvent()
+  if (!searchPerformed.value) {
+    await fetchPublicPhotos()
+  }
 })
 
 /**
@@ -580,7 +605,7 @@ const searchBySelfie = async () => {
 /**
  * Reset search
  */
-const resetSearch = () => {
+const resetSearch = async () => {
   bibNumber.value = ''
   uploadedSelfie.value = null
   selfieFile.value = null
@@ -588,6 +613,7 @@ const resetSearch = () => {
   searchPerformed.value = false
   isSearching.value = false
   lastFetchedOffset.value = -1
+  await fetchPublicPhotos()
 }
 
 /**
