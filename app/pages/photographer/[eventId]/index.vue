@@ -3,32 +3,19 @@
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Breadcrumb -->
-      <div class="mb-6 flex items-center gap-2">
-        <UButton
-          color="neutral"
-          variant="ghost"
-          to="/photographer"
-        >
-          Albums
-        </UButton>
-        <UIcon name="i-lucide-chevron-right" class="w-4 h-4 text-muted" />
-        <span v-if="currentView === 'locations'" class="font-medium text-highlighted">
-          {{ event?.name }}
-        </span>
-        <template v-if="currentView === 'photos'">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            @click="goToLocations"
-          >
-            {{ event?.name }}
-          </UButton>
-          <UIcon name="i-lucide-chevron-right" class="w-4 h-4 text-muted" />
-          <span class="font-medium text-highlighted">
-            {{ selectedLocation?.name || 'All Photos' }}
-          </span>
-        </template>
-      </div>
+      <nav class="mb-6" aria-label="Breadcrumb">
+        <ol class="flex items-center space-x-2 text-sm">
+          <li class="flex items-center">
+            <NuxtLink to="/photographer" class="text-primary-600 hover:text-primary-500 transition-colors">
+              Albums
+            </NuxtLink>
+          </li>
+          <li class="flex items-center">
+            <UIcon name="i-lucide-chevron-right" class="w-4 h-4 text-muted mx-2" />
+            <span class="text-highlighted font-medium">{{ event?.name || 'Event' }}</span>
+          </li>
+        </ol>
+      </nav>
 
       <!-- Loading Event -->
       <div v-if="isLoadingEvent" class="flex justify-center py-20">
@@ -48,8 +35,8 @@
         </UButton>
       </div>
 
-      <!-- Locations View (Folders in Event) -->
-      <div v-else-if="currentView === 'locations' && event">
+      <!-- Event Details -->
+      <div v-else-if="event" class="mb-8">
         <div class="mb-6">
           <h2 class="text-2xl font-bold text-highlighted mb-2">{{ event.name }}</h2>
           <p class="text-muted">{{ event.location }}</p>
@@ -58,7 +45,7 @@
         <!-- All Photos Card -->
         <div
           class="group cursor-pointer mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-primary-500 transition-all"
-          @click="openLocationPhotos(null)"
+          @click="navigateToPhotos(null)"
         >
           <div class="flex items-center gap-4">
             <div class="w-14 h-14 bg-primary-100 dark:bg-primary-900/20 rounded-lg flex items-center justify-center">
@@ -86,7 +73,7 @@
             v-for="folder in locationFolders"
             :key="folder.id"
             class="group cursor-pointer p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary-500 hover:shadow-sm transition-all"
-            @click="openLocationPhotos(folder)"
+            @click="navigateToPhotos(folder)"
           >
             <div class="flex items-center gap-4">
               <div class="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
@@ -104,25 +91,15 @@
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Photos View (Photos in Location/Event) -->
-      <div v-else-if="currentView === 'photos' && event">
-        <div class="mb-6">
-          <h2 class="text-2xl font-bold text-highlighted mb-2">
-            {{ selectedLocation?.name || 'All Photos' }}
-          </h2>
-          <p class="text-muted">{{ photos.length }} {{ photos.length === 1 ? 'photo' : 'photos' }}</p>
+        <!-- No Locations -->
+        <div v-else-if="!loadingLocations && locationFolders.length === 0" class="text-center py-12">
+          <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <UIcon name="i-lucide-folder-open" class="w-10 h-10 text-gray-400" />
+          </div>
+          <h3 class="text-lg font-medium text-highlighted mb-2">No locations found</h3>
+          <p class="text-muted">No photo locations are available for this event yet.</p>
         </div>
-
-        <!-- Natural Gallery Grid Component -->
-        <NaturalGallery
-          :items="galleryItems"
-          :loading="loadingPhotos"
-          :lightbox="true"
-          :selectable="false"
-          @pagination="handlePagination"
-        />
       </div>
     </div>
 
@@ -131,14 +108,14 @@
       :event="event"
       :locations="uploadLocations"
       :loading-locations="loadingUploadLocations"
-      :initial-location="selectedLocation"
       @upload-complete="handleUploadComplete"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Event, PhotoLocation } from '~/types'
+// @ts-ignore
+import type { Event, PhotoLocation } from '@/types'
 
 const route = useRoute()
 const eventId = route.params.eventId as string
@@ -147,20 +124,12 @@ const eventId = route.params.eventId as string
 const user = useSupabaseUser()
 const { authFetch } = useAuthFetch()
 
-// Navigation state
-const currentView = ref<'locations' | 'photos'>('locations')
-
 // State
 const event = ref<Event | null>(null)
 const locationFolders = ref<any[]>([])
-const photos = ref<any[]>([])
-const selectedLocation = ref<PhotoLocation | null>(null)
 const isLoadingEvent = ref(true)
 const loadingLocations = ref(false)
-const loadingPhotos = ref(false)
 const eventPhotoCount = ref(0)
-const currentOffset = ref(0)
-const hasMorePhotos = ref(true)
 
 // Upload locations
 const uploadLocations = ref<PhotoLocation[]>([])
@@ -173,10 +142,9 @@ useHead(() => ({
 
 // Fetch data on mount
 onMounted(async () => {
-  // await fetchUser()
-    await fetchEvent()
-    await fetchLocationFolders()
-    await fetchUploadLocations()
+  await fetchEvent()
+  await fetchLocationFolders()
+  await fetchUploadLocations()
 })
 
 /**
@@ -236,75 +204,14 @@ const fetchLocationFolders = async () => {
 }
 
 /**
- * Open location photos or all event photos
+ * Navigate to photos page
  */
-const openLocationPhotos = async (location: any | null) => {
-  selectedLocation.value = location
-  currentView.value = 'photos'
-  // Reset pagination state
-  currentOffset.value = 0
-  photos.value = []
-  hasMorePhotos.value = true
-  // Pagination will be triggered by NaturalGallery component
-  fetchPhotos(10, 0)
-}
-
-/**
- * Fetch photos for selected location or all event photos
- */
-const fetchPhotos = async (limit: number, offset: number) => {
-  console.log('Fetching photos:', { limit, offset })
-  try {
-    loadingPhotos.value = true
-    
-    if (!user.value) return
-
-    let url = `/api/events/${eventId}/photos?limit=${limit}&offset=${offset}`
-    if (selectedLocation.value) {
-      url += `&location_id=${selectedLocation.value.id}`
-    }
-
-    const data = await authFetch<any[]>(url)
-
-    if (offset === 0) {
-      photos.value = data || []
-    } else {
-      photos.value = [...photos.value, ...(data || [])]
-    }
-
-    // Check if there are more photos to load
-    hasMorePhotos.value = data && data.length === limit
-
-  } catch (error) {
-    console.error('Failed to fetch photos:', error)
-    if (offset === 0) {
-      photos.value = []
-    }
-  } finally {
-    loadingPhotos.value = false
-  }
-}
-
-/**
- * Handle infinite scroll pagination
- */
-const handlePagination = async (event: { offset: number; limit: number }) => {
-  console.log('Handle pagination:', loadingPhotos.value, hasMorePhotos.value);
-  if (loadingPhotos.value || !hasMorePhotos.value) return
-  
-  currentOffset.value = event.offset
-  await fetchPhotos(event.limit, event.offset)
-}
-
-/**
- * Navigation functions
- */
-const goToLocations = () => {
-  currentView.value = 'locations'
-  selectedLocation.value = null
-  photos.value = []
-  currentOffset.value = 0
-  hasMorePhotos.value = true
+const navigateToPhotos = (location: any | null) => {
+  const query = location ? { location: location.id } : {}
+  navigateTo({
+    path: `/photographer/${eventId}/photos`,
+    query
+  })
 }
 
 /**
@@ -329,27 +236,6 @@ const fetchUploadLocations = async () => {
  * Handle upload complete from component
  */
 const handleUploadComplete = async () => {
-  if (currentView.value === 'locations') {
-    await fetchLocationFolders()
-  } else if (currentView.value === 'photos') {
-    // Reload photos from beginning
-    currentOffset.value = 0
-    hasMorePhotos.value = true
-    await fetchPhotos(4, 0)
-  }
+  await fetchLocationFolders()
 }
-
-/**
- * Prepare gallery items from photos
- */
-const galleryItems = computed(() => {
-  return photos.value.map(photo => ({
-    id: photo.id,
-    imageUrl: photo.public_url,
-    thumbnailUrl: photo.public_url,
-    alt: `Photo ${photo.id}`,
-    width: photo.width,
-    height: photo.height
-  }))
-})
 </script>
