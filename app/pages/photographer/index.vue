@@ -70,7 +70,7 @@
 import type { Event } from '~/types'
 
 definePageMeta({
-  middleware: 'auth'
+  middleware: 'photographer'
 })
 
 useHead({
