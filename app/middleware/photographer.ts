@@ -4,14 +4,10 @@
  * Jika tidak, redirect ke halaman access denied
  */
 export default defineNuxtRouteMiddleware(async (to, from) => {
-  const { fetchUser, isAuthenticated } = useUser()
-  const { supabase } = useSupabase()
-  
-  // Fetch user jika belum ada
-  await fetchUser()
+  const user = useSupabaseUser()
   
   // Redirect ke login jika belum authenticated
-  if (!isAuthenticated.value) {
+  if (!user.value) {
     return navigateTo({
       path: '/login',
       query: { redirect: to.fullPath }

@@ -51,7 +51,7 @@
 
 <script setup lang="ts">
 // Check authentication
-const { user, fetchUser, isAuthenticated } = useUser()
+const { user, isAuthenticated } = useUser()
 const { auth } = useSupabase()
 
 // Color mode
@@ -86,9 +86,4 @@ const userMenuItems = computed(() => [
     }
   }]
 ])
-
-// Fetch user on mount
-onMounted(async () => {
-  await fetchUser()
-})
 </script>

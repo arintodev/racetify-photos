@@ -94,6 +94,10 @@
 // @ts-ignore
 import type { Event, PhotoLocation } from '@/types'
 
+definePageMeta({
+  middleware: 'photographer'
+})
+
 const route = useRoute()
 const eventId = route.params.eventId as string
 

@@ -15,24 +15,14 @@ export const useSupabase = () => {
 
 /**
  * Composable untuk mendapatkan user yang sedang login
+ * Menggunakan useSupabaseUser dari Nuxt module (sudah auto-managed dan cached)
  */
 export const useUser = () => {
   const user = useSupabaseUser()
-  const { auth } = useSupabase()
-
-  // Get current user
-  const fetchUser = async () => {
-    const { data } = await auth.getUser()
-    return data.user
-  }
-
-  // Check if user is authenticated
-  const isAuthenticated = computed(() => !!user.value)
 
   return {
     user,
-    isAuthenticated,
-    fetchUser
+    isAuthenticated: computed(() => !!user.value)
   }
 }
 
@@ -40,16 +30,23 @@ export const useUser = () => {
  * Composable untuk API calls dengan auth header otomatis
  */
 export const useAuthFetch = () => {
-  const { auth } = useSupabase()
+  const user = useSupabaseUser()
 
   /**
    * Fetch dengan Authorization header otomatis
+   * Menggunakan user dari Nuxt Supabase module (sudah di-cache)
    */
   const authFetch = async <T = any>(url: string, options: any = {}): Promise<T> => {
-    const { data: { session } } = await auth.getSession()
-    
-    if (!session) {
+    if (!user.value) {
       throw new Error('No active session')
+    }
+
+    // Dapatkan access token dari cookie/localStorage yang sudah di-manage Nuxt
+    const supabase = useSupabaseClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    if (!session?.access_token) {
+      throw new Error('No access token available')
     }
 
     return $fetch<T>(url, {
