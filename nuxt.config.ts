@@ -11,8 +11,12 @@ export default defineNuxtConfig({
   supabase: {
     redirectOptions: {
       login: '/login',
-      callback: '/confirm',
-      exclude: ['/', '/event/*', '/search'], // Public routes yang tidak perlu auth
+      callback: '/auth/callback',
+      exclude: [
+        '/',
+        '/event/*',
+        '/search',
+      ],
     }
   },
 

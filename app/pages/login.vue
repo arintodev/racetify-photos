@@ -20,7 +20,7 @@
       <div v-else class="space-y-4">
         <UAlert
           v-if="error"
-          color="red"
+          color="error"
           variant="soft"
           :title="error"
           @close="error = ''"
@@ -123,11 +123,16 @@ const showPassword = ref(false)
 // Get redirect URL from query params
 const redirectUrl = computed(() => {
   const redirect = route.query.redirect as string
-  return redirect && redirect !== '/login' ? redirect : '/photographer'
+  return redirect && redirect !== '/login' ? redirect : '/'
 })
 
-// Check if already logged in
+// Check if already logged in or show error from redirect
 onMounted(async () => {
+  // Show error dari query params jika ada
+  if (route.query.error) {
+    error.value = route.query.error as string
+  }
+  
   const { data: { session } } = await auth.getSession()
   if (session) {
     navigateTo(redirectUrl.value)
@@ -152,7 +157,6 @@ const handleLoginWithEmail = async () => {
     if (data.session) {
       navigateTo(redirectUrl.value)
     }
-
   } catch (err: any) {
     error.value = err.message || 'Login gagal. Periksa email dan password Anda.'
     loading.value = false
@@ -170,7 +174,7 @@ const handleLoginWithGoogle = async () => {
     const { error: signInError } = await auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}${redirectUrl.value}`
+        redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectUrl.value)}`
       }
     })
 
