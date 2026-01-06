@@ -194,9 +194,6 @@
         <div v-else>
           <div class="mb-6 flex items-center justify-between">
             <div>
-              <h3 class="text-lg font-semibold text-highlighted mb-1">
-                {{ photos.length }} {{ photos.length === 1 ? 'Photo' : 'Photos' }}
-              </h3>
               <p class="text-sm text-muted">
                 All public photos for this event
               </p>
@@ -245,9 +242,6 @@
         <div v-else>
           <div class="mb-6 flex items-center justify-between">
             <div>
-              <h3 class="text-lg font-semibold text-highlighted mb-1">
-                {{ photos.length }} {{ photos.length === 1 ? 'Photo' : 'Photos' }} Found
-              </h3>
               <p class="text-sm text-muted">
                 {{ searchMode === 'bib' 
                   ? `Photos with bib number "${bibNumber}"` 
@@ -399,13 +393,18 @@ useHead(() => ({
  * Handle pagination from NaturalGallery
  */
 const handlePagination = async (event: { offset: number; limit: number }) => {
-  if (isLoadingMore.value || !hasMorePhotos.value || !searchPerformed.value) return
+  if (isLoadingMore.value || !hasMorePhotos.value) return
   
   // Skip if offset is 0 (initial search already fetched this)
   if (event.offset === 0) return
   
   // Prevent duplicate requests with same offset
   if (event.offset === lastFetchedOffset.value) return
+
+  if (!searchPerformed.value) {
+    await fetchPublicPhotos(event.limit, event.offset)
+    return
+  }
   
   if (searchMode.value === 'bib') {
     await searchByBib(event.limit, event.offset)
@@ -456,8 +455,14 @@ const fetchPublicPhotos = async (limit = 10, offset = 0) => {
     } else {
       photos.value = [...photos.value, ...(data || [])]
     }
+
+    lastFetchedOffset.value = offset
+    hasMorePhotos.value = data && data.length === limit
   } catch (error) {
     console.error('Failed to fetch photos:', error)
+  } finally {
+    isSearching.value = false
+    isLoadingMore.value = false
   }
 }
 
@@ -617,27 +622,11 @@ const resetSearch = async () => {
 }
 
 /**
- * Get photo URL
- */
-const getPhotoUrl = (photoPath: string) => {
-  const { data } = supabase.storage.from('event-photos').getPublicUrl(photoPath)
-  return data.publicUrl
-}
-
-/**
  * Handle image error
  */
 const handleImageError = (event: Event) => {
   const target = event.target as HTMLImageElement
   target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
-}
-
-/**
- * Open photo detail
- */
-const openPhotoDetail = (photo: any) => {
-  selectedPhoto.value = photo
-  showPhotoModal.value = true
 }
 
 /**

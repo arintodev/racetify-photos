@@ -15,11 +15,6 @@ import { serverSupabaseClient } from '#supabase/server'
 export default defineEventHandler(async (event) => {
   try {
     const supabase: any = await serverSupabaseClient(event)
-    const { data: authData } = await supabase.auth.getUser()
-    const user = authData?.user
-    if (!user) {
-      throw createError({ statusCode: 401, message: 'Unauthorized' })
-    }
 
     const eventId = getRouterParam(event, 'eventId')
     const query = getQuery(event)
@@ -31,13 +26,6 @@ export default defineEventHandler(async (event) => {
       throw createError({
         statusCode: 400,
         message: 'Event ID is required'
-      })
-    }
-
-    if (!user) {
-      throw createError({
-        statusCode: 401,
-        message: 'Unauthorized: Invalid token'
       })
     }
 
