@@ -116,14 +116,6 @@
         class="lightbox-overlay"
         @click="closeLightbox"
         @keydown.escape="closeLightbox"
-        @wheel="handleWheel"
-        @mousedown="startDrag"
-        @mousemove="drag"
-        @mouseup="endDrag"
-        @mouseleave="endDrag"
-        @touchstart="startTouch"
-        @touchmove="touchMove"
-        @touchend="endTouch"
         tabindex="-1"
       >
         <div class="lightbox-content" @click.stop>
@@ -178,6 +170,14 @@
               cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
             }"
             @dragstart.prevent
+            @wheel.stop="handleWheel"
+            @mousedown.stop="startDrag"
+            @mousemove.stop="drag"
+            @mouseup.stop="endDrag"
+            @mouseleave.stop="endDrag"
+            @touchstart.stop="startTouch"
+            @touchmove.stop="touchMove"
+            @touchend.stop="endTouch"
           />
 
           <!-- Navigation -->
@@ -330,7 +330,7 @@ const getImageDimensions = (item: GalleryItem): { aspectRatio: number } => {
   if (item.width && item.height) {
     return { aspectRatio: item.width / item.height }
   }
-  
+
   return { aspectRatio: 1.5 }
 }
 
@@ -540,31 +540,44 @@ const endDrag = () => {
 
 // Touch handlers for mobile
 const startTouch = (event: TouchEvent) => {
-  if (zoomLevel.value > 1 && event.touches.length === 1) {
+  if (event.touches.length === 1) {
     event.preventDefault()
-    isDragging.value = true
-    const touch = event.touches[0]
-    lastMouseX.value = touch.clientX
-    lastMouseY.value = touch.clientY
+    event.stopPropagation()
+    
+    if (zoomLevel.value > 1) {
+      isDragging.value = true
+      const touch = event.touches[0]
+      if (touch) {
+        lastMouseX.value = touch.clientX
+        lastMouseY.value = touch.clientY
+      }
+    }
+    
     document.body.style.overflow = 'hidden'
     document.body.style.touchAction = 'none'
   }
 }
 
 const touchMove = (event: TouchEvent) => {
-  if (isDragging.value && zoomLevel.value > 1 && event.touches.length === 1) {
+  if (event.touches.length === 1) {
     event.preventDefault()
+    event.stopPropagation()
+    
     const touch = event.touches[0]
-    const deltaX = touch.clientX - lastMouseX.value
-    const deltaY = touch.clientY - lastMouseY.value
-    panX.value += deltaX
-    panY.value += deltaY
-    lastMouseX.value = touch.clientX
-    lastMouseY.value = touch.clientY
+    if (isDragging.value && zoomLevel.value > 1 && touch) {
+      const deltaX = touch.clientX - lastMouseX.value
+      const deltaY = touch.clientY - lastMouseY.value
+      panX.value += deltaX
+      panY.value += deltaY
+      lastMouseX.value = touch.clientX
+      lastMouseY.value = touch.clientY
+    }
   }
 }
 
 const endTouch = (event: TouchEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
   isDragging.value = false
   document.body.style.touchAction = ''
 }
@@ -889,16 +902,20 @@ defineExpose({
 
 .lightbox-content {
   position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
+  width: 100vw;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .lightbox-image {
-  max-width: 100%;
-  max-height: 100%;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
+  width: auto;
+  height: auto;
   object-fit: contain;
   border-radius: 8px;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
@@ -961,7 +978,7 @@ defineExpose({
 }
 
 .lightbox-nav {
-  position: absolute;
+  position: fixed;
   top: 50%;
   transform: translateY(-50%);
   background-color: rgba(255, 255, 255, 0.1);
@@ -989,11 +1006,11 @@ defineExpose({
 }
 
 .lightbox-prev {
-  left: -70px;
+  left: 10px;
 }
 
 .lightbox-next {
-  right: -70px;
+  right: 10px;
 }
 
 /* Responsive */
@@ -1039,13 +1056,12 @@ defineExpose({
   }
   
   .lightbox-content {
-    max-width: 95vw;
-    max-height: 85vh;
+    padding: 10px;
   }
   
   .lightbox-image {
-    max-width: 95vw;
-    max-height: 85vh;
+    max-width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
   }
   
   .lightbox-zoom-controls {

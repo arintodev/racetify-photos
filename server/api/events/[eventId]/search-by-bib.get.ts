@@ -97,6 +97,8 @@ export default defineEventHandler(async (event): Promise<PhotoWithBibs[]> => {
           location_name: item.photo_locations?.name,
           status: item.status,
           created_at: item.created_at,
+          height: item.height,
+          width: item.width,
           bib_numbers: item.photo_bibs.map((b: any) => b.bib_number),
           public_url: urlData.publicUrl
         }
