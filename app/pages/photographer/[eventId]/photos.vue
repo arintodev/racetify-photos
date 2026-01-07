@@ -68,13 +68,32 @@
 
         <!-- Photo Gallery -->
         <div v-else>
-          <NaturalGallery
+          <JustifiedGallery
             :items="galleryItems"
-            :loading="loadingPhotos"
+            :loading="false"
             :lightbox="true"
             :selectable="false"
-            @pagination="handlePagination"
+            :target-row-height="280"
+            :gap="8"
+            @item-click="handleItemClick"
           />
+
+          <!-- Load More Button -->
+          <div class="text-center mt-8" v-if="hasMorePhotos">
+            <UButton
+              color="primary"
+              variant="outline"
+              size="lg"
+              :loading="loadingPhotos"
+              :disabled="loadingPhotos"
+              @click="handleLoadMore"
+            >
+              Load More Photos
+            </UButton>
+          </div>
+          
+          <!-- Infinite Scroll Trigger -->
+          <div ref="scrollContainer" class="h-20 flex items-center justify-center mt-4" />
         </div>
       </div>
     </div>
@@ -93,6 +112,7 @@
 <script setup lang="ts">
 // @ts-ignore
 import type { Event, PhotoLocation } from '@/types'
+import { useIntersectionObserver } from '@vueuse/core'
 
 definePageMeta({
   middleware: 'photographer'
@@ -114,6 +134,7 @@ const loadingPhotos = ref(false)
 const currentOffset = ref(0)
 const hasMorePhotos = ref(true)
 const totalPhotoCount = ref(0)
+const scrollContainer = ref<HTMLElement | null>(null)
 
 // Upload locations
 const uploadLocations = ref<PhotoLocation[]>([])
@@ -131,6 +152,40 @@ onMounted(async () => {
   await fetchPhotos(10, 0)
   await fetchUploadLocations()
 })
+
+// Setup intersection observer for infinite scroll
+const { stop } = useIntersectionObserver(
+  scrollContainer,
+  ([entry]) => {
+    if (entry?.isIntersecting && hasMorePhotos.value && !loadingPhotos.value) {
+      handleLoadMore()
+    }
+  },
+  { threshold: 0.1 }
+)
+
+onUnmounted(() => {
+  stop()
+})
+
+/**
+ * Handle item click from JustifiedGallery (optional - lightbox is handled internally)
+ */
+const handleItemClick = (item: any) => {
+  // JustifiedGallery handles lightbox internally when lightbox prop is true
+  // This method can be used for additional click handling if needed
+  console.log('Photo clicked:', item.id)
+}
+
+/**
+ * Handle load more for infinite scroll
+ */
+const handleLoadMore = async () => {
+  if (loadingPhotos.value || !hasMorePhotos.value) return
+  
+  const nextOffset = photos.value.length
+  await fetchPhotos(10, nextOffset)
+}
 
 /**
  * Fetch event details
@@ -202,16 +257,6 @@ const fetchPhotos = async (limit: number, offset: number) => {
 }
 
 /**
- * Handle infinite scroll pagination
- */
-const handlePagination = async (event: { offset: number; limit: number }) => {
-  if (loadingPhotos.value || !hasMorePhotos.value) return
-  
-  currentOffset.value = event.offset
-  await fetchPhotos(event.limit, event.offset)
-}
-
-/**
  * Fetch total photo count
  */
 const fetchTotalPhotoCount = async () => {
@@ -267,7 +312,8 @@ const galleryItems = computed(() => {
     thumbnailUrl: photo.public_url,
     alt: `Photo ${photo.id}`,
     width: photo.width,
-    height: photo.height
+    height: photo.height,
+    title: photo.location_name || ''
   }))
 })
 </script>

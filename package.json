@@ -15,11 +15,13 @@
     "@nuxtjs/supabase": "^2.0.3",
     "browser-image-compression": "^2.0.2",
     "image-size": "^2.0.2",
+    "justified-layout": "^4.1.0",
     "nuxt": "^4.2.2",
     "vue": "^3.5.25",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.82"
+    "@iconify-json/lucide": "^1.2.82",
+    "@types/justified-layout": "^4.1.4"
   }
 }

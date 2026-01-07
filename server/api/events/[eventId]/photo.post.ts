@@ -1,6 +1,6 @@
 import { serverSupabaseClient } from '#supabase/server'
 import sizeOf from 'image-size'
-import type { UploadResponse } from '../../../../types'
+import type { UploadResponse } from '../../../../app/types'
 
 /**
  * API endpoint untuk upload foto ke Supabase Storage

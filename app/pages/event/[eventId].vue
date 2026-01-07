@@ -80,14 +80,11 @@
                 :loading="isSearching"
                 :disabled="!bibNumber || isSearching"
                 @click="() => searchByBib()"
+                icon="i-lucide-search"
               >
-                <UIcon name="i-lucide-search" class="mr-2" />
                 Search
               </UButton>
             </div>
-            <p class="text-xs text-muted mt-2">
-              Enter the bib number you wore during the race
-            </p>
           </div>
         </div>
 
@@ -178,9 +175,10 @@
         <p class="text-lg font-medium text-highlighted mb-2">Searching for your photos...</p>
         <p class="text-sm text-muted">This may take a few moments</p>
       </div>
-      <!-- No Search Performed (Default State) -->
-      <div v-else-if="!searchPerformed">
-        <div v-if="photos.length === 0" class="text-center py-20">
+      
+      <!-- No Photos State -->
+      <div v-else-if="photos.length === 0" class="text-center py-20">
+        <div v-if="!searchPerformed">
           <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center mx-auto mb-4 justify-center">
             <UIcon name="i-lucide-image-off" class="w-10 h-10 text-gray-400" />
           </div>
@@ -192,30 +190,6 @@
           </p>
         </div>
         <div v-else>
-          <div class="mb-6 flex items-center justify-between">
-            <div>
-              <p class="text-sm text-muted">
-                All public photos for this event
-              </p>
-            </div>
-          </div>
-          <NaturalGallery
-            :items="galleryItems"
-            :loading="isLoadingMore"
-            :lightbox="true"
-            :selectable="false"
-            @pagination="handlePagination"
-          />
-          <div ref="scrollContainer" class="h-20 flex items-center justify-center mt-4">
-            <UIcon v-if="isLoadingMore" name="i-lucide-loader-circle" class="w-6 h-6 animate-spin text-primary-500" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Search Results -->
-      <div v-else-if="searchPerformed">
-        <!-- No Results -->
-        <div v-if="photos.length === 0" class="text-center py-20">
           <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
             <UIcon name="i-lucide-search-x" class="w-10 h-10 text-gray-400" />
           </div>
@@ -237,107 +211,68 @@
             Try Another Search
           </UButton>
         </div>
-
-        <!-- Photo Grid -->
-        <div v-else>
-          <div class="mb-6 flex items-center justify-between">
-            <div>
-              <p class="text-sm text-muted">
-                {{ searchMode === 'bib' 
+      </div>
+      
+      <!-- Photos Display -->
+      <div v-else>
+        <!-- Header -->
+        <div class="mb-6 flex items-center justify-between">
+          <div>
+            <p class="text-sm text-muted">
+              {{ !searchPerformed 
+                ? 'All public photos for this event'
+                : searchMode === 'bib' 
                   ? `Photos with bib number "${bibNumber}"` 
                   : 'Photos matching your selfie' }}
-              </p>
-            </div>
-            <UButton
-              color="neutral"
-              variant="outline"
-              size="sm"
-              @click="resetSearch"
-            >
-              <UIcon name="i-lucide-rotate-ccw" class="mr-2" />
-              New Search
-            </UButton>
+            </p>
           </div>
-
-          <NaturalGallery
-            :items="galleryItems"
-            :loading="isLoadingMore"
-            :lightbox="true"
-            :selectable="false"
-            @pagination="handlePagination"
-          />
-
-          <!-- Infinite Scroll Trigger -->
-          <div ref="scrollContainer" class="h-20 flex items-center justify-center mt-4">
-            <UIcon v-if="isLoadingMore" name="i-lucide-loader-circle" class="w-6 h-6 animate-spin text-primary-500" />
-          </div>
+          <UButton
+            v-if="searchPerformed"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="resetSearch"
+          >
+            <UIcon name="i-lucide-rotate-ccw" class="mr-2" />
+            New Search
+          </UButton>
         </div>
+
+        <!-- Gallery -->
+        <JustifiedGallery
+          :items="galleryItems"
+          :loading="false"
+          :lightbox="true"
+          :selectable="false"
+          :target-row-height="280"
+          :gap="8"
+          @item-click="handleItemClick"
+        />
+
+        <!-- Load More Button -->
+        <div class="text-center mt-8" v-if="hasMorePhotos && searchPerformed">
+          <UButton
+            color="primary"
+            variant="outline"
+            size="lg"
+            :loading="isLoadingMore"
+            :disabled="isLoadingMore"
+            @click="handleLoadMore"
+          >
+            Load More Photos
+          </UButton>
+        </div>
+
+        <!-- Infinite Scroll Trigger -->
+        <div ref="scrollContainer" class="h-20 flex items-center justify-center mt-4" />
       </div>
     </div>
-
-    <!-- Photo Detail Modal -->
-    <UModal 
-      v-if="selectedPhoto"
-      v-model:open="showPhotoModal" 
-      :title="event?.name || 'Photo Details'"
-      :ui="{ content: 'max-w-5xl' }"
-    >
-      <template #body>
-        <div class="grid grid-cols-3 h-[600px]">
-          <!-- Photo Preview -->
-          <div class="col-span-2 bg-black flex items-center justify-center">
-            <img
-              :src="selectedPhoto.public_url"
-              :alt="`Photo ${selectedPhoto.id}`"
-              class="max-w-full max-h-full object-contain"
-            />
-          </div>
-
-          <!-- Details Sidebar -->
-          <div class="border-l border-gray-200 dark:border-gray-700 overflow-y-auto pl-6 space-y-4">
-            <div>
-              <div class="text-xs text-muted mb-1">Event</div>
-              <div class="text-sm font-medium text-highlighted">
-                {{ event?.name || 'N/A' }}
-              </div>
-            </div>
-            <div v-if="selectedPhoto.location_name">
-              <div class="text-xs text-muted mb-1">Location</div>
-              <div class="text-sm font-medium text-highlighted">
-                {{ selectedPhoto.location_name }}
-              </div>
-            </div>
-            <div v-if="selectedPhoto.bib_numbers && selectedPhoto.bib_numbers.length > 0">
-              <div class="text-xs text-muted mb-1">Bib Numbers</div>
-              <div class="flex flex-wrap gap-2">
-                <span
-                  v-for="bib in selectedPhoto.bib_numbers"
-                  :key="bib"
-                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300"
-                >
-                  #{{ bib }}
-                </span>
-              </div>
-            </div>
-            <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <UButton
-                color="primary"
-                block
-                @click="downloadPhoto(selectedPhoto)"
-              >
-                <UIcon name="i-lucide-download" class="mr-2" />
-                Download Photo
-              </UButton>
-            </div>
-          </div>
-        </div>
-      </template>
-    </UModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { Event } from '~/types'
+import { useIntersectionObserver } from '@vueuse/core'
 
 // No auth required - public page
 definePageMeta({
@@ -347,9 +282,6 @@ definePageMeta({
 const route = useRoute()
 const eventId = route.params.eventId as string
 
-// Composables
-const { supabase } = useSupabase()
-
 // State
 const event = ref<Event | null>(null)
 const searchMode = ref<'bib' | 'selfie'>('bib')
@@ -357,10 +289,8 @@ const bibNumber = ref('')
 const uploadedSelfie = ref<string | null>(null)
 const selfieFile = ref<File | null>(null)
 const photos = ref<any[]>([])
-const selectedPhoto = ref<any | null>(null)
 const isSearching = ref(false)
 const searchPerformed = ref(false)
-const showPhotoModal = ref(false)
 const isDragging = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
@@ -390,24 +320,29 @@ useHead(() => ({
 }))
 
 /**
- * Handle pagination from NaturalGallery
+ * Handle item click from JustifiedGallery (optional - lightbox is handled internally)
  */
-const handlePagination = async (event: { offset: number; limit: number }) => {
+const handleItemClick = (item: any) => {
+  // JustifiedGallery handles lightbox internally when lightbox prop is true
+  // This method can be used for additional click handling if needed
+  console.log('Photo clicked:', item.id)
+}
+
+/**
+ * Handle pagination for infinite scroll
+ */
+const handleLoadMore = async () => {
   if (isLoadingMore.value || !hasMorePhotos.value) return
   
-  // Skip if offset is 0 (initial search already fetched this)
-  if (event.offset === 0) return
+  const currentOffset = photos.value.length
   
-  // Prevent duplicate requests with same offset
-  if (event.offset === lastFetchedOffset.value) return
-
   if (!searchPerformed.value) {
-    await fetchPublicPhotos(event.limit, event.offset)
+    await fetchPublicPhotos(10, currentOffset)
     return
   }
   
   if (searchMode.value === 'bib') {
-    await searchByBib(event.limit, event.offset)
+    await searchByBib(10, currentOffset)
   }
 }
 
@@ -417,6 +352,21 @@ onMounted(async () => {
   if (!searchPerformed.value) {
     await fetchPublicPhotos()
   }
+})
+
+// Setup intersection observer for infinite scroll
+const { stop } = useIntersectionObserver(
+  scrollContainer,
+  ([entry]) => {
+    if (entry?.isIntersecting && hasMorePhotos.value && !isLoadingMore.value) {
+      handleLoadMore()
+    }
+  },
+  { threshold: 0.1 }
+)
+
+onUnmounted(() => {
+  stop()
 })
 
 /**
@@ -443,7 +393,7 @@ const fetchPublicPhotos = async (limit = 10, offset = 0) => {
   }
 
   try {
-    const data = await $fetch<Event>(`/api/events/${eventId}/public-photos`, {
+    const data = await $fetch<any>(`/api/events/${eventId}/public-photos`, {
       params: {
         bib: bibNumber.value.trim(),
         limit: limit,
@@ -539,7 +489,7 @@ const triggerFileInput = () => {
 /**
  * Handle file select
  */
-const handleFileSelect = (event: Event) => {
+const handleFileSelect = (event: any) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
   
@@ -624,22 +574,8 @@ const resetSearch = async () => {
 /**
  * Handle image error
  */
-const handleImageError = (event: Event) => {
+const handleImageError = (event: any) => {
   const target = event.target as HTMLImageElement
   target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
-}
-
-/**
- * Download photo
- */
-const downloadPhoto = (photo: any) => {
-  const url = photo.public_url
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `racetify-${eventId}-${photo.id}.jpg`
-  link.target = '_blank'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
 }
 </script>

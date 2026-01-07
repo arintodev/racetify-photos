@@ -54,6 +54,8 @@ export default defineEventHandler(async (event): Promise<PhotoWithBibs[]> => {
         event_id,
         created_at,
         location_id,
+        height,
+        width,
         photo_bibs!inner (
           id,
           bib_string,

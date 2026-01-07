@@ -37,7 +37,9 @@ export default defineEventHandler(async (event) => {
         photo_path,
         event_id,
         location_id,
-        created_at
+        created_at,
+        height,
+        width
       `)
       .or("ocr_result.is.null,ocr_result.eq.")
       .eq('status', 'completed')

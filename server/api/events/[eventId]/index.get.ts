@@ -1,5 +1,5 @@
 import { serverSupabaseClient } from '#supabase/server'
-import type { Event } from '../../../../types'
+import type { Event } from '../../../../app/types'
 
 /**
  * API endpoint untuk mendapatkan detail event by ID
