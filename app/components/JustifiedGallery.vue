@@ -538,20 +538,20 @@ const endDrag = () => {
   document.body.style.cursor = ''
 }
 
-// Touch handlers for mobile
+// Touch handlers for mobile - only respond to 2-finger gestures
 const startTouch = (event: TouchEvent) => {
-  if (event.touches.length === 1) {
+  // Only handle 2-finger touch for pinch/pan
+  if (event.touches.length === 2) {
     event.preventDefault()
     event.stopPropagation()
     
-    if (zoomLevel.value > 1) {
-      isDragging.value = true
-      const touch = event.touches[0]
-      if (touch) {
-        lastMouseX.value = touch.clientX
-        lastMouseY.value = touch.clientY
-      }
-    }
+    isDragging.value = true
+    const touch1 = event.touches[0]
+    const touch2 = event.touches[1]
+    
+    // Store the center point of two fingers
+    lastMouseX.value = (touch1.clientX + touch2.clientX) / 2
+    lastMouseY.value = (touch1.clientY + touch2.clientY) / 2
     
     document.body.style.overflow = 'hidden'
     document.body.style.touchAction = 'none'
@@ -559,25 +559,39 @@ const startTouch = (event: TouchEvent) => {
 }
 
 const touchMove = (event: TouchEvent) => {
-  if (event.touches.length === 1) {
+  // Only handle 2-finger touch
+  if (event.touches.length === 2) {
     event.preventDefault()
     event.stopPropagation()
     
-    const touch = event.touches[0]
-    if (isDragging.value && zoomLevel.value > 1 && touch) {
-      const deltaX = touch.clientX - lastMouseX.value
-      const deltaY = touch.clientY - lastMouseY.value
+    if (isDragging.value) {
+      const touch1 = event.touches[0]
+      const touch2 = event.touches[1]
+      
+      // Calculate center point of two fingers
+      const centerX = (touch1.clientX + touch2.clientX) / 2
+      const centerY = (touch1.clientY + touch2.clientY) / 2
+      
+      // Pan based on center point movement
+      const deltaX = centerX - lastMouseX.value
+      const deltaY = centerY - lastMouseY.value
+      
       panX.value += deltaX
       panY.value += deltaY
-      lastMouseX.value = touch.clientX
-      lastMouseY.value = touch.clientY
+      
+      lastMouseX.value = centerX
+      lastMouseY.value = centerY
     }
   }
 }
 
 const endTouch = (event: TouchEvent) => {
-  event.preventDefault()
-  event.stopPropagation()
+  // Only prevent default if we were handling the gesture
+  if (isDragging.value) {
+    event.preventDefault()
+    event.stopPropagation()
+  }
+  
   isDragging.value = false
   document.body.style.touchAction = ''
 }
