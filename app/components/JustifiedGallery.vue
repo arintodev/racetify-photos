@@ -313,6 +313,17 @@ const isDragging = ref(false)
 const lastMouseX = ref(0)
 const lastMouseY = ref(0)
 
+// Touch/pinch zoom state
+const initialPinchDistance = ref(0)
+const initialZoomLevel = ref(1)
+
+// Double tap state
+const lastTapTime = ref(0)
+const tapTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
+const DOUBLE_TAP_DELAY = 300
+const tapStartPos = ref({ x: 0, y: 0 })
+const TAP_THRESHOLD = 10 // pixels
+
 /* ================= COMPUTED ================= */
 
 const galleryStyle = computed(() => ({
@@ -492,10 +503,12 @@ const nextImage = () => {
 // Zoom functions
 const zoomIn = () => {
   zoomLevel.value = Math.min(zoomLevel.value * 1.5, 5)
+  applyPanBoundaries()
 }
 
 const zoomOut = () => {
   zoomLevel.value = Math.max(zoomLevel.value / 1.5, 0.5)
+  applyPanBoundaries()
 }
 
 const resetZoom = () => {
@@ -530,6 +543,9 @@ const drag = (event: MouseEvent) => {
     panY.value += deltaY
     lastMouseX.value = event.clientX
     lastMouseY.value = event.clientY
+    
+    // Apply pan boundaries
+    applyPanBoundaries()
   }
 }
 
@@ -538,37 +554,154 @@ const endDrag = () => {
   document.body.style.cursor = ''
 }
 
-// Touch handlers for mobile - only respond to 2-finger gestures
+// Helper function to calculate distance between two touch points
+const getDistance = (touch1: Touch, touch2: Touch) => {
+  const dx = touch2.clientX - touch1.clientX
+  const dy = touch2.clientY - touch1.clientY
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+// Helper function to zoom to specific coordinates
+const zoomToPoint = (clientX: number, clientY: number, targetZoom: number = 2) => {
+  const rect = document.querySelector('.lightbox-image')?.getBoundingClientRect()
+  if (!rect) return
+  
+  // Calculate position relative to image center
+  const imageCenterX = rect.left + rect.width / 2
+  const imageCenterY = rect.top + rect.height / 2
+  
+  // Calculate offset from center
+  const offsetX = (clientX - imageCenterX) * (targetZoom - zoomLevel.value)
+  const offsetY = (clientY - imageCenterY) * (targetZoom - zoomLevel.value)
+  
+  // Update zoom and pan
+  zoomLevel.value = targetZoom
+  panX.value = panX.value - offsetX / targetZoom
+  panY.value = panY.value - offsetY / targetZoom
+  
+  // Apply pan boundaries
+  applyPanBoundaries()
+}
+
+// Helper function to constrain pan within image boundaries
+const applyPanBoundaries = () => {
+  const rect = document.querySelector('.lightbox-image')?.getBoundingClientRect()
+  if (!rect || zoomLevel.value <= 1) {
+    panX.value = 0
+    panY.value = 0
+    return
+  }
+  
+  // Calculate actual image dimensions when zoomed
+  const zoomedWidth = rect.width * zoomLevel.value
+  const zoomedHeight = rect.height * zoomLevel.value
+  
+  // Calculate viewport dimensions
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  
+  // Calculate maximum pan distances
+  const maxPanX = Math.max(0, (zoomedWidth - viewportWidth) / (2 * zoomLevel.value))
+  const maxPanY = Math.max(0, (zoomedHeight - viewportHeight) / (2 * zoomLevel.value))
+  
+  // Constrain pan values
+  panX.value = Math.max(-maxPanX, Math.min(maxPanX, panX.value))
+  panY.value = Math.max(-maxPanY, Math.min(maxPanY, panY.value))
+}
+
+// Handle double tap detection with zoom in/out behavior
+const handleSingleTap = (clientX: number, clientY: number) => {
+  const currentTime = Date.now()
+  const timeDiff = currentTime - lastTapTime.value
+
+  if (timeDiff < DOUBLE_TAP_DELAY) {
+    // Double tap detected
+    if (tapTimeout.value) {
+      clearTimeout(tapTimeout.value)
+      tapTimeout.value = null
+    }
+    if (zoomLevel.value === 1) {
+      // Zoom in to tapped area
+      zoomToPoint(clientX, clientY, 2)
+    } else {
+      // Zoom out to normal when already zoomed
+      resetZoom()
+    }
+    
+    lastTapTime.value = 0
+  } else {
+    // Single tap - wait to see if there's a second tap
+    lastTapTime.value = currentTime
+    tapTimeout.value = setTimeout(() => {
+      // Single tap confirmed - no action needed for lightbox
+      lastTapTime.value = 0
+      tapTimeout.value = null
+    }, DOUBLE_TAP_DELAY)
+  }
+}
+
+// Touch handlers for mobile - pinch zoom with 2 fingers, pan with 1 finger
 const startTouch = (event: TouchEvent) => {
-  // Only handle 2-finger touch for pinch/pan
   if (event.touches.length === 2) {
+    // 2-finger pinch zoom
     event.preventDefault()
     event.stopPropagation()
     
-    isDragging.value = true
     const touch1 = event.touches[0]
     const touch2 = event.touches[1]
     
-    // Store the center point of two fingers
-    lastMouseX.value = (touch1.clientX + touch2.clientX) / 2
-    lastMouseY.value = (touch1.clientY + touch2.clientY) / 2
-    
-    document.body.style.overflow = 'hidden'
-    document.body.style.touchAction = 'none'
+    if (touch1 && touch2) {
+      // Store initial pinch distance and zoom level
+      initialPinchDistance.value = getDistance(touch1, touch2)
+      initialZoomLevel.value = zoomLevel.value
+      
+      // Store center point for panning
+      lastMouseX.value = (touch1.clientX + touch2.clientX) / 2
+      lastMouseY.value = (touch1.clientY + touch2.clientY) / 2
+      
+      isDragging.value = true
+      document.body.style.overflow = 'hidden'
+      document.body.style.touchAction = 'none'
+    }
+  } else if (event.touches.length === 1) {
+    // Store initial touch position for tap detection
+    const touch = event.touches[0]
+    if (touch) {
+      tapStartPos.value = { x: touch.clientX, y: touch.clientY }
+      
+      if (zoomLevel.value > 1) {
+        // Prepare for potential pan when zoomed, but don't set isDragging yet
+        event.preventDefault()
+        event.stopPropagation()
+        
+        lastMouseX.value = touch.clientX
+        lastMouseY.value = touch.clientY
+        
+        document.body.style.overflow = 'hidden'
+        document.body.style.touchAction = 'none'
+      }
+    }
   }
 }
 
 const touchMove = (event: TouchEvent) => {
-  // Only handle 2-finger touch
-  if (event.touches.length === 2) {
+  if (event.touches.length === 2 && isDragging.value) {
+    // 2-finger pinch zoom + pan
     event.preventDefault()
     event.stopPropagation()
     
-    if (isDragging.value) {
-      const touch1 = event.touches[0]
-      const touch2 = event.touches[1]
+    const touch1 = event.touches[0]
+    const touch2 = event.touches[1]
+    
+    if (touch1 && touch2) {
+      // Calculate current distance for pinch zoom
+      const currentDistance = getDistance(touch1, touch2)
+      const scaleRatio = currentDistance / initialPinchDistance.value
+      const newZoomLevel = Math.max(0.5, Math.min(5, initialZoomLevel.value * scaleRatio))
       
-      // Calculate center point of two fingers
+      zoomLevel.value = newZoomLevel
+      
+      // Calculate center point for panning
       const centerX = (touch1.clientX + touch2.clientX) / 2
       const centerY = (touch1.clientY + touch2.clientY) / 2
       
@@ -581,18 +714,64 @@ const touchMove = (event: TouchEvent) => {
       
       lastMouseX.value = centerX
       lastMouseY.value = centerY
+      
+      // Apply pan boundaries
+      applyPanBoundaries()
+    }
+  } else if (event.touches.length === 1 && zoomLevel.value > 1) {
+    // 1-finger pan when zoomed - only set isDragging when movement is detected
+    event.preventDefault()
+    event.stopPropagation()
+    
+    const touch = event.touches[0]
+    if (touch) {
+      const deltaX = Math.abs(touch.clientX - tapStartPos.value.x)
+      const deltaY = Math.abs(touch.clientY - tapStartPos.value.y)
+      
+      // Only start dragging if there's significant movement
+      if (deltaX > TAP_THRESHOLD || deltaY > TAP_THRESHOLD) {
+        if (!isDragging.value) {
+          isDragging.value = true
+        }
+        
+        const moveDeltaX = touch.clientX - lastMouseX.value
+        const moveDeltaY = touch.clientY - lastMouseY.value
+        
+        panX.value += moveDeltaX
+        panY.value += moveDeltaY
+        
+        lastMouseX.value = touch.clientX
+        lastMouseY.value = touch.clientY
+        
+        // Apply pan boundaries
+        applyPanBoundaries()
+      }
     }
   }
 }
 
 const endTouch = (event: TouchEvent) => {
-  // Only prevent default if we were handling the gesture
   if (isDragging.value) {
     event.preventDefault()
     event.stopPropagation()
   }
   
+  // Check for single tap (not drag) for double tap detection
+  if (event.changedTouches.length === 1 && !isDragging.value) {
+    const touch = event.changedTouches[0]
+    if (touch) {
+      const deltaX = Math.abs(touch.clientX - tapStartPos.value.x)
+      const deltaY = Math.abs(touch.clientY - tapStartPos.value.y)
+      
+      // Only trigger tap if finger didn't move much (not a drag)
+      if (deltaX < TAP_THRESHOLD && deltaY < TAP_THRESHOLD) {
+        handleSingleTap(touch.clientX, touch.clientY)
+      }
+    }
+  }
+  
   isDragging.value = false
+  initialPinchDistance.value = 0
   document.body.style.touchAction = ''
 }
 
@@ -663,6 +842,12 @@ onUnmounted(() => {
   }
   
   document.body.style.overflow = ''
+  
+  // Cleanup double tap timeout
+  if (tapTimeout.value) {
+    clearTimeout(tapTimeout.value)
+    tapTimeout.value = null
+  }
 })
 
 /* ================= KEYBOARD EVENTS ================= */
@@ -745,7 +930,6 @@ defineExpose({
   border-radius: 4px;
   background-color: #f3f4f6;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  group: true;
 }
 
 .photo-placeholder {
@@ -831,9 +1015,8 @@ defineExpose({
 }
 
 .gallery-item-selected {
-  ring: 2px;
-  ring-color: rgb(59, 130, 246);
-  ring-offset: 2px;
+  box-shadow: 0 0 0 2px rgb(59, 130, 246);
+  transform: scale(0.95);
 }
 
 .gallery-image {
@@ -916,8 +1099,6 @@ defineExpose({
 
 .lightbox-content {
   position: relative;
-  width: 100vw;
-  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
