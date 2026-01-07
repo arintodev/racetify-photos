@@ -143,9 +143,7 @@
               :disabled="zoomLevel >= 3"
               aria-label="Zoom in"
             >
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21l-4.35-4.35M11 8v6m-3-3h6"/></g></svg>
             </button>
             <button
               class="zoom-btn"
@@ -153,9 +151,7 @@
               :disabled="zoomLevel <= 0.5"
               aria-label="Zoom out"
             >
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6" />
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21l-4.35-4.35M8 11h6"/></g></svg>
             </button>
             <button
               class="zoom-btn"
@@ -163,9 +159,7 @@
               :disabled="zoomLevel === 1 && panX === 0 && panY === 0"
               aria-label="Reset zoom"
             >
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 15l6 6M15 9l6-6m0 13v5h-5m5-13V3h-5M3 16v5h5m-5 0l6-6M3 8V3h5m1 6L3 3"/></svg>
             </button>
           </div>
           
@@ -882,8 +876,8 @@ defineExpose({
 }
 
 .lightbox-zoom-controls {
-  position: absolute;
-  top: 0px;
+  position: fixed;
+  top: 20px;
   right: 20px;
   display: flex;
   flex-direction: column;
@@ -929,28 +923,6 @@ defineExpose({
   font-weight: 500;
   backdrop-filter: blur(10px);
   z-index: 1001;
-}
-
-.lightbox-close {
-  position: absolute;
-  top: -50px;
-  right: 0;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  z-index: 1001;
-}
-
-.lightbox-close:hover {
-  background-color: rgba(255, 255, 255, 0.2);
 }
 
 .lightbox-nav {
@@ -1000,6 +972,17 @@ defineExpose({
     height: 1.5rem;
   }
   
+  .lightbox-zoom-controls {
+    top: 20px;
+    right: 10px;
+    gap: 6px;
+  }
+  
+  .zoom-btn {
+    width: 35px;
+    height: 35px;
+  }
+  
   .lightbox-nav {
     width: 40px;
     height: 40px;
@@ -1012,12 +995,6 @@ defineExpose({
   .lightbox-next {
     right: -50px;
   }
-  
-  .lightbox-close {
-    top: -40px;
-    width: 35px;
-    height: 35px;
-  }
 }
 
 @media (max-width: 480px) {
@@ -1026,24 +1003,44 @@ defineExpose({
     height: 1.25rem;
   }
   
+  .lightbox-zoom-controls {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    gap: 8px;
+    z-index: 1002;
+  }
+  
+  .zoom-btn {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .zoom-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  
   .lightbox-nav {
     position: fixed;
-    top: auto;
-    bottom: 20px;
-    transform: none;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
   }
   
   .lightbox-prev {
-    left: 20px;
+    left: 10px;
   }
   
   .lightbox-next {
-    right: 20px;
+    right: 10px;
   }
   
-  .lightbox-close {
-    top: 20px;
-    right: 20px;
+  .zoom-indicator {
+    bottom: 80px;
+    font-size: 12px;
+    padding: 6px 12px;
   }
 }
 </style>
