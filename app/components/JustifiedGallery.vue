@@ -121,6 +121,9 @@
         @mousemove="drag"
         @mouseup="endDrag"
         @mouseleave="endDrag"
+        @touchstart="startTouch"
+        @touchmove="touchMove"
+        @touchend="endTouch"
         tabindex="-1"
       >
         <div class="lightbox-content" @click.stop>
@@ -130,7 +133,7 @@
           <div class="lightbox-zoom-controls">
             <button
               class="zoom-btn"
-              @click="closeLightbox"
+              @click.stop="closeLightbox"
               aria-label="Close"
             >
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -139,7 +142,7 @@
             </button>
             <button
               class="zoom-btn"
-              @click="zoomIn"
+              @click.stop="zoomIn"
               :disabled="zoomLevel >= 3"
               aria-label="Zoom in"
             >
@@ -147,7 +150,7 @@
             </button>
             <button
               class="zoom-btn"
-              @click="zoomOut"
+              @click.stop="zoomOut"
               :disabled="zoomLevel <= 0.5"
               aria-label="Zoom out"
             >
@@ -155,7 +158,7 @@
             </button>
             <button
               class="zoom-btn"
-              @click="resetZoom"
+              @click.stop="resetZoom"
               :disabled="zoomLevel === 1 && panX === 0 && panY === 0"
               aria-label="Reset zoom"
             >
@@ -181,7 +184,7 @@
           <button
             v-if="items.length > 1"
             class="lightbox-nav lightbox-prev"
-            @click="previousImage"
+            @click.stop="previousImage"
             :disabled="currentLightboxIndex === 0"
             aria-label="Previous image"
           >
@@ -193,7 +196,7 @@
           <button
             v-if="items.length > 1"
             class="lightbox-nav lightbox-next"
-            @click="nextImage"
+            @click.stop="nextImage"
             :disabled="currentLightboxIndex === items.length - 1"
             aria-label="Next image"
           >
@@ -469,6 +472,7 @@ const closeLightbox = () => {
   resetZoom()
   emit('lightbox-close')
   document.body.style.overflow = ''
+  document.body.style.touchAction = ''
 }
 
 const previousImage = () => {
@@ -532,6 +536,37 @@ const drag = (event: MouseEvent) => {
 const endDrag = () => {
   isDragging.value = false
   document.body.style.cursor = ''
+}
+
+// Touch handlers for mobile
+const startTouch = (event: TouchEvent) => {
+  if (zoomLevel.value > 1 && event.touches.length === 1) {
+    event.preventDefault()
+    isDragging.value = true
+    const touch = event.touches[0]
+    lastMouseX.value = touch.clientX
+    lastMouseY.value = touch.clientY
+    document.body.style.overflow = 'hidden'
+    document.body.style.touchAction = 'none'
+  }
+}
+
+const touchMove = (event: TouchEvent) => {
+  if (isDragging.value && zoomLevel.value > 1 && event.touches.length === 1) {
+    event.preventDefault()
+    const touch = event.touches[0]
+    const deltaX = touch.clientX - lastMouseX.value
+    const deltaY = touch.clientY - lastMouseY.value
+    panX.value += deltaX
+    panY.value += deltaY
+    lastMouseX.value = touch.clientX
+    lastMouseY.value = touch.clientY
+  }
+}
+
+const endTouch = (event: TouchEvent) => {
+  isDragging.value = false
+  document.body.style.touchAction = ''
 }
 
 /* ================= WATCHERS ================= */
@@ -911,7 +946,7 @@ defineExpose({
 }
 
 .zoom-indicator {
-  position: absolute;
+  position: fixed;
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
@@ -1001,6 +1036,16 @@ defineExpose({
   .loading-icon {
     width: 1.25rem;
     height: 1.25rem;
+  }
+  
+  .lightbox-content {
+    max-width: 95vw;
+    max-height: 85vh;
+  }
+  
+  .lightbox-image {
+    max-width: 95vw;
+    max-height: 85vh;
   }
   
   .lightbox-zoom-controls {
