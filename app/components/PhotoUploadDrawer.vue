@@ -199,7 +199,6 @@
 <script setup lang="ts">
 import type { Event, PhotoLocation } from '~/types'
 import * as exifr from 'exifr'
-import { f } from 'vue-router/dist/router-CWoNjPRp.mjs'
 
 interface Props {
   event: Event | null
