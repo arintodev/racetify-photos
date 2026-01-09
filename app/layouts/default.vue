@@ -9,13 +9,24 @@
 
       <template #right>
         <div class="flex items-center gap-3">
-          <UButton
-            :icon="isDark ? 'i-heroicons-moon-20-solid' : 'i-heroicons-sun-20-solid'"
-            color="neutral"
-            variant="ghost"
-            aria-label="Theme"
-            @click="isDark = !isDark"
-          />
+          <template v-if="isDark">
+            <UButton
+              icon="i-lucide-moon"
+              color="neutral"
+              variant="ghost"
+              aria-label="Switch to light mode"
+              @click="isDark = !isDark"
+            />
+          </template>
+          <template v-else>
+            <UButton
+              icon="i-lucide-sun"
+              color="neutral"
+              variant="ghost"
+              aria-label="Switch to dark mode"
+              @click="isDark = !isDark"
+            />
+          </template>
           <UDropdownMenu v-if="isAuthenticated" :items="userMenuItems" :popper="{ placement: 'bottom-end' }">
             <UAvatar
               :src="user?.user_metadata?.avatar_url"
@@ -28,7 +39,7 @@
             color="primary"
             variant="outline"
             to="/login"
-            icon="i-heroicons-arrow-right-on-rectangle"
+            icon="i-lucide-arrow-right-on-rectangle"
             label="Login"
           />
         </div>
@@ -74,12 +85,12 @@ const userMenuItems = computed(() => [
   }],
   [{
     label: 'Photographer',
-    icon: 'i-heroicons-camera',
+    icon: 'i-lucide-camera',
     to: '/photographer'
   }],
   [{
     label: 'Logout',
-    icon: 'i-heroicons-arrow-right-on-rectangle',
+    icon: 'i-lucide-arrow-right-on-rectangle',
     onSelect: async () => {
       await auth.signOut()
       navigateTo('/login')

@@ -10,7 +10,7 @@
     >
       <template #headline>
         <UBadge variant="subtle" size="lg">
-          <UIcon name="i-heroicons-camera" class="mr-1" />
+          <UIcon name="i-lucide-camera" class="mr-1" />
           Platform Pencarian Foto Race
         </UBadge>
       </template>
@@ -26,7 +26,7 @@
         
       <!-- Loading State -->
       <div v-if="isLoading" class="text-center py-12">
-        <UIcon name="i-heroicons-arrow-path" class="text-4xl text-primary animate-spin mb-4" />
+        <UIcon name="i-lucide-refresh-cw" class="text-4xl text-primary animate-spin mb-4" />
         <p class="text-muted">Memuat daftar event...</p>
       </div>
 
@@ -61,7 +61,7 @@
               </h3>
               <div class="space-y-2 text-white/90">
                 <div v-if="item.date" class="flex items-center gap-2">
-                  <UIcon name="i-heroicons-calendar" class="flex-shrink-0 w-5 h-5" />
+                  <UIcon name="i-lucide-calendar" class="flex-shrink-0 w-5 h-5" />
                   <span class="text-base">{{ formatDate(item.date) }}</span>
                 </div>
               </div>
@@ -73,7 +73,7 @@
                 class="mt-4"
                 @click.stop="selectEvent(item)"
               >
-                <UIcon name="i-heroicons-magnifying-glass" />
+                <UIcon name="i-lucide-magnifying-glass" />
                 Cari Foto
               </UButton>
             </div>
@@ -85,7 +85,7 @@
 
       <!-- Empty State -->
       <UCard v-else class="text-center py-12">
-        <UIcon name="i-heroicons-calendar-days" class="text-6xl text-muted mb-4 mx-auto" />
+        <UIcon name="i-lucide-calendar-days" class="text-6xl text-muted mb-4 mx-auto" />
         <h3 class="text-xl font-medium text-highlighted mb-2">
           Belum Ada Event
         </h3>
@@ -108,17 +108,17 @@
           <UPageCard
             title="1. Pilih Event"
             description="Pilih event race yang Anda ikuti dari daftar yang tersedia"
-            icon="i-heroicons-numbered-list"
+            icon="i-lucide-list-ordered"
           />
           <UPageCard
             title="2. Masukkan Bib"
             description="Input nomor bib yang Anda gunakan saat race"
-            icon="i-heroicons-hashtag"
+            icon="i-lucide-hash"
           />
           <UPageCard
             title="3. Download Foto"
             description="Temukan dan download foto terbaik Anda"
-            icon="i-heroicons-arrow-down-tray"
+            icon="i-lucide-download"
           />
         </UPageGrid>
       </div>

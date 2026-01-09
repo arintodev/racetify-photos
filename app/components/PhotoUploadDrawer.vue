@@ -174,7 +174,7 @@
 
                 <div class="flex-1 min-w-0">
                   <p class="text-sm text-highlighted truncate">
-                    {{ progress.file.name }}
+                    {{ progress.file.file.name }}
                   </p>
                   <p v-if="progress.error" class="text-xs text-error mt-1">
                     {{ progress.error }}
@@ -198,6 +198,8 @@
 
 <script setup lang="ts">
 import type { Event, PhotoLocation } from '~/types'
+import * as exifr from 'exifr'
+import { f } from 'vue-router/dist/router-CWoNjPRp.mjs'
 
 interface Props {
   event: Event | null
@@ -212,8 +214,12 @@ const props = withDefaults(defineProps<Props>(), {
   initialLocation: null
 })
 
+function onUploaded(photo: any) {
+  emit('uploaded', photo)
+}
+
 const emit = defineEmits<{
-  'upload-complete': []
+  'uploaded': [photo: any]
 }>()
 
 // Composables
@@ -221,15 +227,15 @@ const user = useSupabaseUser()
 const { 
   uploadQueue, 
   isUploading, 
-  uploadPhotosWithConcurrency,
+  uploadPhotos,
   uploadStats,
   clearQueue,
   retryFailed
-} = usePhotoUpload()
+} = usePhotoUpload(onUploaded)
 
 // State
 const showUploadDrawer = ref(false)
-const selectedLocation = ref<PhotoLocation | null>(props.initialLocation)
+const selectedLocation = ref<PhotoLocation | undefined>(props.initialLocation || undefined)
 const isDragging = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
@@ -240,14 +246,7 @@ const reversedUploadQueue = computed(() => {
 
 // Watch initial location changes
 watch(() => props.initialLocation, (newLocation) => {
-  selectedLocation.value = newLocation
-})
-
-// Watch upload completion to emit event
-watch(() => uploadStats.value.success, (newCount, oldCount) => {
-  if (newCount > oldCount) {
-    emit('upload-complete')
-  }
+  selectedLocation.value = newLocation || undefined
 })
 
 /**
@@ -274,7 +273,7 @@ const triggerFileInput = () => {
 /**
  * Handle file select from input
  */
-const handleFileSelect = (event: Event) => {
+const handleFileSelect = (event: any) => {
   const target = event.target as HTMLInputElement
   const files = Array.from(target.files || [])
   
@@ -287,24 +286,43 @@ const handleFileSelect = (event: Event) => {
   }
 }
 
-/**
- * Start upload process
- */
 const startUpload = async (files: File[]) => {
-  if (!user.value || !props.event) return
+  if (!user.value || !props.event) return;
+
+  // Ekstrak metadata (termasuk EXIF) untuk setiap file
+  const filesWithMeta = await Promise.all(files.map(async (file) => {
+    let exif = null;
+    try {
+      exif = await exifr.parse(file);
+    } catch (e) {
+      exif = null;
+    }
+    return {
+      file,
+      meta: {
+        original_name: file.name,
+        original_time: exif?.DateTimeOriginal || null,
+        cam_make: exif?.Make || null,
+        cam_model: exif?.Model || null,
+        lens_model: exif?.LensModel || null,
+        iso: exif?.ISO || null,
+        aperture: exif?.FNumber || null,
+        exposure_time: exif?.ExposureTime || null,
+        focal_length: exif?.FocalLength || null,
+      }
+    };
+  }));
 
   try {
-    await uploadPhotosWithConcurrency(
-      files,
+    await uploadPhotos(
       props.event.id,
-      user.value.sub,
-      3,
-      selectedLocation.value?.id
-    )
+      selectedLocation.value?.id,
+      filesWithMeta,
+    );
   } catch (error) {
-    console.error('Upload failed:', error)
+    console.error('Upload failed:', error);
   }
-}
+};
 
 /**
  * Retry failed uploads
@@ -312,7 +330,7 @@ const startUpload = async (files: File[]) => {
 const handleRetryFailed = async () => {
   if (!user.value || !props.event) return
   
-  await retryFailed(props.event.id, user.value.sub, selectedLocation.value?.id)
+  await retryFailed(props.event.id, selectedLocation.value?.id)
 }
 
 /**

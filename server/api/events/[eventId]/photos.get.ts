@@ -45,9 +45,13 @@ export default defineEventHandler(async (event) => {
     let queryBuilder = supabase
       .from('photos')
       .select(`
-        *,
-        events:event_id (name),
-        photo_locations:location_id (name)
+        id,
+        photographer_id,
+        location_id,
+        original_name,
+        photo_path,
+        height,
+        width
       `)
       .eq('photographer_id', user.id)
       .eq('event_id', eventId)
@@ -68,21 +72,7 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Transform response with public URLs
-    const photos = (data || []).map((item: any) => {
-      const { data: publicUrlData } = supabase.storage
-        .from('event-photos')
-        .getPublicUrl(item.photo_path)
-
-      return {
-        ...item,
-        public_url: publicUrlData.publicUrl,
-        event_name: item.events?.name,
-        location_name: item.photo_locations?.name
-      }
-    })
-
-    return photos
+    return data
 
   } catch (error: any) {
     if (error.statusCode) {

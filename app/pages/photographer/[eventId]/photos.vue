@@ -69,7 +69,7 @@
         <!-- Photo Gallery -->
         <div v-else>
           <JustifiedGallery
-            :items="galleryItems"
+            :items="photos"
             :loading="false"
             :lightbox="true"
             :selectable="false"
@@ -104,7 +104,7 @@
       :locations="uploadLocations"
       :loading-locations="loadingUploadLocations"
       :initial-location="selectedLocation"
-      @upload-complete="handleUploadComplete"
+      @uploaded="handleUploaded"
     />
   </div>
 </template>
@@ -302,18 +302,9 @@ const handleUploadComplete = async () => {
   await fetchPhotos(10, 0)
 }
 
-/**
- * Prepare gallery items from photos
- */
-const galleryItems = computed(() => {
-  return photos.value.map(photo => ({
-    id: photo.id,
-    imageUrl: photo.public_url,
-    thumbnailUrl: photo.public_url,
-    alt: `Photo ${photo.id}`,
-    width: photo.width,
-    height: photo.height,
-    title: photo.location_name || ''
-  }))
-})
+const handleUploaded = async (photo: any) => {
+  // Prepend the newly uploaded photo to the photos array
+  photos.value = [photo, ...photos.value]
+  totalPhotoCount.value += 1
+}
 </script>

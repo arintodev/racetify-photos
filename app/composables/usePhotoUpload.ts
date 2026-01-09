@@ -1,18 +1,18 @@
 import imageCompression from 'browser-image-compression'
-import type { UploadProgress } from '~/types'
+import type { PhotoMeta, UploadProgress } from '~/types'
 
 /**
  * Composable untuk handle photo upload dengan kompresi
  * Menggunakan browser-image-compression untuk kompresi client-side
  * dan API routes untuk upload ke Supabase
  */
-export const usePhotoUpload = () => {
-  const { auth } = useSupabase()
+export const usePhotoUpload = (onUploaded: any) => {
+  const { authFetch } = useAuthFetch()
   
   // State untuk tracking upload progress
   const uploadQueue = ref<Map<string, UploadProgress>>(new Map())
   const isUploading = ref(false)
-  const uploadCounter = ref(0) // Counter untuk unique keys
+  const uploadCounter = ref(0) //   Counter untuk unique keys
 
   /**
    * Kompresi foto di browser
@@ -38,11 +38,10 @@ export const usePhotoUpload = () => {
    * Upload single foto ke server
    */
   const uploadSinglePhoto = async (
-    file: File,
     eventId: string,
-    photographerId: string,
+    locationId: string | undefined | null,
+    file: {file: File, meta: PhotoMeta},
     fileKey: string,
-    locationId?: string
   ): Promise<void> => {
     try {
       // Update status: compressing
@@ -53,7 +52,7 @@ export const usePhotoUpload = () => {
       })
 
       // Kompresi foto
-      const compressedFile = await compressPhoto(file)
+      const compressedFile = await compressPhoto(file.file)
 
       // Update status: uploading
       uploadQueue.value.set(fileKey, {
@@ -62,33 +61,27 @@ export const usePhotoUpload = () => {
         progress: 30
       })
 
-      // Get auth token
-      const { data: { session } } = await auth.getSession()
-      if (!session) {
-        throw new Error('No active session')
-      }
-
       // Prepare form data
       const formData = new FormData()
-      formData.append('file', compressedFile, file.name)
-      formData.append('fileName', file.name)
+      formData.append('file', compressedFile, file.file.name)
+
       if (locationId) {
         formData.append('locationId', locationId)
       }
+      if (file.meta) {
+        formData.append('meta', JSON.stringify(file.meta))
+      }
 
       // Upload ke API
-      const uploadResponse = await $fetch<{ success: boolean; photoPath?: string; jobId?: string; error?: string }>(
+      const uploadResponse = await authFetch<{ success: boolean; data?: any; error?: string }>(
         `/api/events/${eventId}/photo`,
         {
           method: 'POST',
-          body: formData,
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
+          body: formData
         }
       )
 
-      if (!uploadResponse.success || !uploadResponse.photoPath) {
+      if (!uploadResponse.success || !uploadResponse?.data.photo_path) {
         throw new Error(uploadResponse.error || 'Upload failed')
       }
 
@@ -97,8 +90,11 @@ export const usePhotoUpload = () => {
         file,
         status: 'success',
         progress: 100,
-        photoPath: uploadResponse.photoPath
       })
+
+      if (onUploaded) {
+        onUploaded(uploadResponse.data)
+      }
 
     } catch (error: any) {
       console.error('Upload error:', error)
@@ -119,10 +115,9 @@ export const usePhotoUpload = () => {
    * Upload multiple photos (batch)
    */
   const uploadPhotos = async (
-    files: File[],
     eventId: string,
-    photographerId: string,
-    locationId?: string
+    locationId: string | undefined | null,
+    files: Array<{ file: File, meta: any }>,
   ): Promise<void> => {
     const wasUploading = isUploading.value
     isUploading.value = true
@@ -132,7 +127,7 @@ export const usePhotoUpload = () => {
       const fileKeys: string[] = []
       files.forEach((file) => {
         uploadCounter.value++
-        const key = `${file.name}-${uploadCounter.value}-${Date.now()}`
+        const key = `${file.file.name}-${uploadCounter.value}-${Date.now()}`
         fileKeys.push(key)
         uploadQueue.value.set(key, {
           file,
@@ -146,66 +141,17 @@ export const usePhotoUpload = () => {
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
         const fileKey = fileKeys[i]
+
+        if (!file || !fileKey) {
+          continue
+        }
         
         try {
-          await uploadSinglePhoto(file, eventId, photographerId, fileKey, locationId)
+          await uploadSinglePhoto(eventId, locationId, file, fileKey)
         } catch (error) {
           // Continue dengan file berikutnya meskipun ada error
-          console.error(`Failed to upload ${file.name}:`, error)
+          console.error(`Failed to upload ${file?.file.name}:`, error)
         }
-      }
-
-    } finally {
-      // Only set to false if it wasn't uploading before
-      if (!wasUploading) {
-        isUploading.value = false
-      }
-    }
-  }
-
-  /**
-   * Upload multiple photos dengan concurrency limit
-   */
-  const uploadPhotosWithConcurrency = async (
-    files: File[],
-    eventId: string,
-    photographerId: string,
-    concurrency: number = 3,
-    locationId?: string
-  ): Promise<void> => {
-    const wasUploading = isUploading.value
-    isUploading.value = true
-
-    try {
-      // Add files to queue with unique keys (TIDAK clear queue)
-      const fileKeys: Map<File, string> = new Map()
-      files.forEach((file) => {
-        uploadCounter.value++
-        const key = `${file.name}-${uploadCounter.value}-${Date.now()}`
-        fileKeys.set(file, key)
-        uploadQueue.value.set(key, {
-          file,
-          status: 'idle',
-          progress: 0
-        })
-      })
-
-      // Upload dengan concurrency limit
-      const chunks: File[][] = []
-      for (let i = 0; i < files.length; i += concurrency) {
-        chunks.push(files.slice(i, i + concurrency))
-      }
-
-      for (const chunk of chunks) {
-        const promises = chunk.map((file) => {
-          const fileKey = fileKeys.get(file)!
-          return uploadSinglePhoto(file, eventId, photographerId, fileKey, locationId)
-            .catch(error => {
-              console.error(`Failed to upload ${file.name}:`, error)
-            })
-        })
-
-        await Promise.all(promises)
       }
 
     } finally {
@@ -240,15 +186,15 @@ export const usePhotoUpload = () => {
   /**
    * Retry failed uploads
    */
-  const retryFailed = async (eventId: string, photographerId: string, locationId?: string) => {
+  const retryFailed = async (eventId: string, locationId?: string) => {
     const failedItems = Array.from(uploadQueue.value.entries())
       .filter(([_, progress]) => progress.status === 'error')
 
     for (const [key, progress] of failedItems) {
       try {
-        await uploadSinglePhoto(progress.file, eventId, photographerId, key, locationId)
+        await uploadSinglePhoto(eventId, locationId, progress.file, key)
       } catch (error) {
-        console.error(`Retry failed for ${progress.file.name}:`, error)
+        console.error(`Retry failed for ${progress.file.file.name}:`, error)
       }
     }
   }
@@ -257,7 +203,6 @@ export const usePhotoUpload = () => {
     uploadQueue,
     isUploading,
     uploadPhotos,
-    uploadPhotosWithConcurrency,
     uploadStats,
     clearQueue,
     retryFailed

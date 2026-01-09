@@ -6,10 +6,31 @@ export const useSupabase = () => {
   const supabase = useSupabaseClient()
   const user = useSupabaseUser()
 
+  function photoUrl(path: string, options?: any) {
+    return supabase.storage
+      .from('event-photos')
+      .getPublicUrl(path, options).data.publicUrl
+  }
+
+  async function downloadPhoto(path: string) {
+    const { data, error } = await supabase.storage
+    .from('event-photos')
+    .download(path)
+
+    if (error || !data) {
+      console.error('Error downloading image:', error)
+      return null
+    }
+
+    return data
+  }
+
   return {
     supabase,
     auth: supabase.auth,
-    user
+    user,
+    photoUrl,
+    downloadPhoto
   }
 }
 

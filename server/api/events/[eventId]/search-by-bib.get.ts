@@ -48,21 +48,16 @@ export default defineEventHandler(async (event): Promise<PhotoWithBibs[]> => {
     const photoQuery = supabase
       .from('photos')
       .select(`
-        id,
-        status,
-        photo_path,
-        event_id,
-        created_at,
+       id,
+        photographer_id,
         location_id,
+        original_name,
+        photo_path,
         height,
         width,
         photo_bibs!inner (
-          id,
           bib_string,
           bib_number
-        ),
-        photo_locations (
-          name
         )
       `)
       .or(`bib_string.eq.${bibNumber},bib_number.eq.${bibNumber}`, { referencedTable: 'photo_bibs' })
@@ -81,31 +76,7 @@ export default defineEventHandler(async (event): Promise<PhotoWithBibs[]> => {
       })
     }
 
-    // Transform response and generate public URLs
-    const photos: PhotoWithBibs[] = await Promise.all(
-      (data || []).map(async (item: any) => {
-        // Get public URL for the photo
-        const { data: urlData } = supabase
-          .storage
-          .from('event-photos')
-          .getPublicUrl(item.photo_path)
-
-        return {
-          id: item.id,
-          event_id: item.event_id,
-          location_id: item.location_id,
-          location_name: item.photo_locations?.name,
-          status: item.status,
-          created_at: item.created_at,
-          height: item.height,
-          width: item.width,
-          bib_numbers: item.photo_bibs.map((b: any) => b.bib_number),
-          public_url: urlData.publicUrl
-        }
-      })
-    )
-
-    return photos
+    return data
 
   } catch (error: any) {
     if (error.statusCode) {

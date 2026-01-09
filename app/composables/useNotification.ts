@@ -14,8 +14,8 @@ export const useNotification = () => {
     toast.add({
       title,
       description,
-      color: 'green',
-      icon: 'i-heroicons-check-circle'
+      color: 'success',
+      icon: 'i-lucide-check-circle'
     })
   }
 
@@ -23,8 +23,8 @@ export const useNotification = () => {
     toast.add({
       title,
       description,
-      color: 'red',
-      icon: 'i-heroicons-x-circle'
+      color: 'error',
+      icon: 'i-lucide-x-circle'
     })
   }
 
@@ -32,8 +32,8 @@ export const useNotification = () => {
     toast.add({
       title,
       description,
-      color: 'blue',
-      icon: 'i-heroicons-information-circle'
+      color: 'info',
+      icon: 'i-lucide-information-circle'
     })
   }
 
@@ -41,8 +41,8 @@ export const useNotification = () => {
     toast.add({
       title,
       description,
-      color: 'yellow',
-      icon: 'i-heroicons-exclamation-triangle'
+      color: 'warning',
+      icon: 'i-lucide-exclamation-triangle'
     })
   }
 

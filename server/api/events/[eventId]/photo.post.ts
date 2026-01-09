@@ -1,6 +1,7 @@
 import { serverSupabaseClient } from '#supabase/server'
 import sizeOf from 'image-size'
-import type { UploadResponse } from '../../../../app/types'
+import type { PhotoMeta, UploadResponse } from '../../../../app/types'
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * API endpoint untuk upload foto ke Supabase Storage
@@ -49,6 +50,7 @@ export default defineEventHandler(async (event): Promise<UploadResponse> => {
     let fileData: Buffer | undefined
     let fileName: string | undefined
     let locationId: string | undefined
+    let meta: PhotoMeta | undefined = undefined
 
     for (const part of formData) {
       if (part.name === 'file') {
@@ -58,6 +60,12 @@ export default defineEventHandler(async (event): Promise<UploadResponse> => {
         fileName = part.data.toString()
       } else if (part.name === 'locationId') {
         locationId = part.data.toString()
+      } else if (part.name === 'meta') {
+        try {
+          meta = JSON.parse(part.data.toString())
+        } catch (e) {
+          meta = undefined
+        }
       }
     }
 
@@ -72,10 +80,9 @@ export default defineEventHandler(async (event): Promise<UploadResponse> => {
     // Use authenticated user ID as photographer ID
     const photographerId = user.id
 
-    // Generate unique filename dengan timestamp
-    const timestamp = Date.now()
+    // Generate unique filename dengan UUID
     const ext = fileName.split('.').pop()
-    const uniqueFileName = `${timestamp}_${fileName}`
+    const uniqueFileName = `${uuidv4()}.${ext}`
 
     // Construct storage path
     const photoPath = `${eventId}/${photographerId}/${uniqueFileName}`
@@ -107,28 +114,43 @@ export default defineEventHandler(async (event): Promise<UploadResponse> => {
       status: 'pending',
       width: dimensions.width || null,
       height: dimensions.height || null,
+      original_name: meta?.original_name,
+      original_time: meta?.original_time,
+      cam_make: meta?.cam_make,
+      cam_model: meta?.cam_model,
+      lens_model: meta?.lens_model,
+      iso: meta?.iso,
+      aperture: meta?.aperture,
+      exposure_time: meta?.exposure_time,
+      focal_length: meta?.focal_length
     }
-    
     // Add locationId if provided (optional)
     if (locationId) {
       jobData.location_id = locationId
     }
-
-    const { data: jobInsertData, error: jobError } = await supabase
+    
+    const { data, error: jobError } = await supabase
       .from('photos')
       .insert(jobData)
-      .select('id')
+      .select(`
+        id,
+        photographer_id,
+        location_id,
+        original_name,
+        photo_path,
+        height,
+        width
+      `)
       .single()
 
     if (jobError) {
       console.error('Job creation error:', jobError)
       // Photo uploaded but job creation failed - log but don't fail request
     }
-
+  
     return {
       success: true,
-      photoPath: uploadData.path,
-      jobId: jobInsertData?.id
+      data
     }
 
   } catch (error: any) {

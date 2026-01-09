@@ -102,14 +102,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Photo Upload Component -->
-    <PhotoUploadDrawer
-      :event="event"
-      :locations="uploadLocations"
-      :loading-locations="loadingUploadLocations"
-      @upload-complete="handleUploadComplete"
-    />
   </div>
 </template>
 

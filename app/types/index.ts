@@ -26,17 +26,27 @@ export interface PhotoJob {
   photo_path: string
   location_id?: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
-  priority?: number
   worker_id?: string
-  retry_count?: number
   error_message?: string
   created_at?: string
   started_at?: string
   finished_at?: string
 }
 
+export interface PhotoMeta {
+  original_name: string,
+  original_time?: Date | string | null,
+  cam_make?: string | null,
+  cam_model?: string | null,
+  lens_model?: string | null,
+  iso?: number | null,
+  aperture?: number | null,
+  exposure_time?: number | null,
+  focal_length?: number | null
+}
+
 export interface UploadProgress {
-  file: File
+  file: {file: File, meta: PhotoMeta},
   status: 'idle' | 'compressing' | 'uploading' | 'success' | 'error'
   progress: number
   error?: string
@@ -44,21 +54,23 @@ export interface UploadProgress {
 }
 
 export interface UploadResponse {
-  success: boolean
-  photoPath?: string
-  jobId?: string
+  success: boolean,
+  data?: any,
   error?: string
 }
 
-export interface Photo {
+export interface Photo extends PhotoMeta {
   id: string
   event_id: string
   photographer_id: string
   photo_path: string
   location_id?: string
-  status: 'pending' | 'processing' | 'completed' | 'failed'
   created_at: string
-  updated_at?: string
+  height?: number | null
+  width?: number | null
+  photo_locations?: {
+    name: string
+  }
 }
 
 export interface PhotoBib {

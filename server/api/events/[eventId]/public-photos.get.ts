@@ -34,10 +34,10 @@ export default defineEventHandler(async (event) => {
       .from('photos')
       .select(`
         id,
-        photo_path,
-        event_id,
+        photographer_id,
         location_id,
-        created_at,
+        original_name,
+        photo_path,
         height,
         width
       `)

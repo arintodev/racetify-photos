@@ -240,7 +240,7 @@
 
         <!-- Gallery -->
         <JustifiedGallery
-          :items="galleryItems"
+          :items="photos"
           :loading="false"
           :lightbox="true"
           :selectable="false"
@@ -299,20 +299,6 @@ const hasMorePhotos = ref(true)
 const isLoadingMore = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
 const lastFetchedOffset = ref(-1)
-
-// Computed property for gallery items
-const galleryItems = computed(() => {
-  return photos.value.map(photo => ({
-    id: photo.id,
-    imageUrl: photo.public_url,
-    thumbnailUrl: photo.public_url,
-    alt: `Photo ${photo.id}`,
-    width: photo.width,
-    height: photo.height,
-    title: photo.location_name || '',
-    ...photo
-  }))
-})
 
 // Dynamic title
 useHead(() => ({

@@ -17,7 +17,7 @@
         <p>{{ emptyMessage }}</p>
       </div>
     </div>
-
+    
     <!-- Gallery -->
     <div v-else class="justified-gallery" :style="galleryStyle" ref="galleryRef">
       <div
@@ -30,11 +30,11 @@
         <div
           v-for="(item, index) in layoutItems"
           :key="item.id"
-          class="gallery-item"
+          class="relative overflow-hidden rounded bg-gray-100 transition-all duration-200 ease-in-out"
           :class="{
-            'gallery-item-selectable': selectable,
-            'gallery-item-selected': selectedItems.has(item.id),
-            'gallery-item-activable': activable
+            'cursor-pointer': selectable,
+            'ring-2 ring-blue-500 scale-95': selectedItems.has(item.id),
+            'hover:-translate-y-0.5 hover:shadow-lg hover:z-10': activable
           }"
           :style="{
             position: 'absolute',
@@ -47,14 +47,14 @@
         >
           <!-- Loading Placeholder -->
           <div 
-            v-if="imageLoadingStates.get(item.id) !== false"
-            class="photo-placeholder"
+            v-if="imageStates.get(item.id) === 0"
+            class="absolute inset-0 bg-gray-100 flex items-center justify-center z-10"
           >
-            <div class="skeleton-loader">
-              <div class="skeleton-shimmer"></div>
+            <div class="absolute inset-0 overflow-hidden bg-gray-200">
+              <div class="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/60 to-transparent"></div>
             </div>
-            <div class="loading-indicator">
-              <svg class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="relative z-20 flex items-center justify-center text-gray-400">
+              <svg class="w-8 h-8 opacity-60 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                 <circle cx="8.5" cy="8.5" r="1.5"/>
                 <polyline points="21,15 16,10 5,21"/>
@@ -64,26 +64,27 @@
 
           <!-- Image -->
           <img
-            :src="item.thumbnailUrl || item.imageUrl"
-            :alt="item.alt || item.title || `Photo ${item.id}`"
-            class="gallery-image"
+            :src="item.thumbnail_url || item.photo_url"
+            :alt="item.original_name || item.id"
+            class="relative w-full h-full object-cover block transition-all duration-300 ease-in-out z-20 opacity-0"
             :class="{
               'cursor-pointer': activable || selectable,
-              'loaded': imageLoadingStates.get(item.id) === false
+              'opacity-100': imageStates.get(item.id) === 1,
+              'hover:scale-105': activable
             }"
             loading="lazy"
             @load="handleImageLoad(item.id)"
-            @error="handleImageError"
+            @error="(event) => handleImageError(event, item.id)"
           />
 
           <!-- Selection Checkbox -->
           <div
             v-if="selectable"
-            class="selection-checkbox"
+            class="absolute top-2 right-2 z-20"
             @click.stop="toggleSelection(item)"
           >
-            <div class="checkbox" :class="{ 'checked': selectedItems.has(item.id) }">
-              <svg v-if="selectedItems.has(item.id)" class="checkmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <div class="w-5 h-5 rounded-full border-2 bg-black/30 flex items-center justify-center transition-all duration-200" :class="selectedItems.has(item.id) ? 'bg-blue-500 border-blue-500' : 'border-white/80'">
+              <svg v-if="selectedItems.has(item.id)" class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                 <polyline points="20,6 9,17 4,12"></polyline>
               </svg>
             </div>
@@ -91,20 +92,20 @@
 
           <!-- Labels -->
           <div
-            v-if="showLabels !== 'never' && item.title"
+            v-if="showLabels !== 'never' && item.original_name"
             class="gallery-label"
             :class="{
               'opacity-0 group-hover:opacity-100': showLabels === 'hover',
               'opacity-100': showLabels === 'always'
             }"
           >
-            <p class="text-sm text-white font-medium truncate">{{ item.title }}</p>
+            <p class="text-sm text-white font-medium truncate">{{ item.original_name }}</p>
           </div>
 
           <!-- Hover Overlay -->
           <div
             v-if="activable"
-            class="gallery-overlay opacity-0 hover:opacity-100 transition-opacity duration-300"
+            class="absolute inset-0 bg-black/10 pointer-events-none opacity-0 hover:opacity-100 transition-opacity duration-300"
           />
         </div>
       </div>
@@ -113,77 +114,97 @@
     <!-- Lightbox -->
     <Teleport to="body" v-if="lightboxOpen">
       <div
-        class="lightbox-overlay"
+        class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] backdrop-blur-sm"
         @click="closeLightbox"
         @keydown.escape="closeLightbox"
         tabindex="-1"
       >
-        <div class="lightbox-content" @click.stop>
+        <div class="relative flex items-center justify-center p-5 sm:p-2.5 box-border" @click.stop>
           <!-- Close Button -->
            
           <!-- Zoom Controls -->
-          <div class="lightbox-zoom-controls">
-            <button
-              class="zoom-btn"
+          <div class="fixed top-5 right-5 flex flex-col gap-2 z-[110]" v-if="currentLightboxItem">
+            <UButton
               @click.stop="closeLightbox"
               aria-label="Close"
-            >
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-            <button
-              class="zoom-btn"
+              size="lg"
+              icon="lucide-x"
+            />
+            <UButton
               @click.stop="zoomIn"
               :disabled="zoomLevel >= 3"
               aria-label="Zoom in"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21l-4.35-4.35M11 8v6m-3-3h6"/></g></svg>
-            </button>
-            <button
-              class="zoom-btn"
+              size="lg"
+              icon="lucide-zoom-in"
+            />
+            <UButton
               @click.stop="zoomOut"
               :disabled="zoomLevel <= 0.5"
               aria-label="Zoom out"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21l-4.35-4.35M8 11h6"/></g></svg>
-            </button>
-            <button
-              class="zoom-btn"
+              size="lg"
+              icon="lucide-zoom-out"
+            />
+            <UButton
               @click.stop="resetZoom"
               :disabled="zoomLevel === 1 && panX === 0 && panY === 0"
               aria-label="Reset zoom"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 15l6 6M15 9l6-6m0 13v5h-5m5-13V3h-5M3 16v5h5m-5 0l6-6M3 8V3h5m1 6L3 3"/></svg>
-            </button>
+              size="lg"
+              icon="lucide-expand"
+            />
+
+            <UButton
+              @click.stop="downloadImage(currentLightboxItem)"
+              aria-label="Download"
+              :disabled="lightboxImageState !== 1"
+              size="lg"
+              icon="lucide-download"
+            />
+            <UButton
+              @click.stop="toggleInfoPanel"
+              aria-label="Photo info"
+              size="lg"
+              icon="lucide-info"
+            />
           </div>
           
           <!-- Image -->
-          <img
-            v-if="currentLightboxItem"
-            :src="currentLightboxItem.imageUrl"
-            :alt="currentLightboxItem.alt || currentLightboxItem.title || `Photo ${currentLightboxItem.id}`"
-            class="lightbox-image"
-            :class="{ 'draggable': zoomLevel > 1 }"
-            :style="{
-              transform: `scale(${zoomLevel}) translate(${panX / zoomLevel}px, ${panY / zoomLevel}px)`,
-              cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
-            }"
-            @dragstart.prevent
-            @wheel.stop="handleWheel"
-            @mousedown.stop="startDrag"
-            @mousemove.stop="drag"
-            @mouseup.stop="endDrag"
-            @mouseleave.stop="endDrag"
-            @touchstart.stop="startTouch"
-            @touchmove.stop="touchMove"
-            @touchend.stop="endTouch"
-          />
+          <div v-if="currentLightboxItem" class="relative flex items-center justify-center">           
+            <!-- Loading spinner -->
+            <div v-if="lightboxImageState === 0" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[120]">
+              <div class="flex items-center justify-center bg-black/50 rounded-full p-3 backdrop-blur-md">
+                <div class="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent"></div>
+              </div>
+            </div>
+            <!-- Full resolution image -->
+            <img
+              :src="currentLightboxItem.photo_url"
+              :alt="currentLightboxItem.original_name || currentLightboxItem.id"
+              class="max-w-[calc(100vw-2.5rem)] max-h-[calc(100vh-2.5rem)] w-auto h-auto object-contain rounded-lg shadow-2xl transition-all duration-300 ease-in-out select-none absolute top-1/2 left-1/2 origin-center"
+              :class="{ 
+                'transition-none': zoomLevel > 1
+              }"
+              :style="{
+                transform: `translate(-50%, -50%) scale(${zoomLevel}) translate(${panX / zoomLevel}px, ${panY / zoomLevel}px)`,
+                cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
+              }"
+              @dragstart.prevent
+              @wheel.stop="handleWheel"
+              @mousedown.stop="startDrag"
+              @mousemove.stop="drag"
+              @mouseup.stop="endDrag"
+              @mouseleave.stop="endDrag"
+              @touchstart.stop="startTouch"
+              @touchmove.stop="touchMove"
+              @touchend.stop="endTouch"
+              @load="handleLightboxImageLoad"
+              @error="handleLightboxImageError"
+            />
+          </div>
 
           <!-- Navigation -->
           <button
             v-if="items.length > 1"
-            class="lightbox-nav lightbox-prev"
+            class="fixed top-1/2 -translate-y-1/2 left-2.5 bg-white/10 border-none rounded-full w-12 h-12 sm:w-11 sm:h-11 md:w-10 md:h-10 flex items-center justify-center text-white cursor-pointer transition-all duration-200 backdrop-blur-md hover:bg-white/20 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed z-[110]"
             @click.stop="previousImage"
             :disabled="currentLightboxIndex === 0"
             aria-label="Previous image"
@@ -195,7 +216,7 @@
 
           <button
             v-if="items.length > 1"
-            class="lightbox-nav lightbox-next"
+            class="fixed top-1/2 -translate-y-1/2 right-2.5 bg-white/10 border-none rounded-full w-12 h-12 sm:w-11 sm:h-11 md:w-10 md:h-10 flex items-center justify-center text-white cursor-pointer transition-all duration-200 backdrop-blur-md hover:bg-white/20 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed z-[110]"
             @click.stop="nextImage"
             :disabled="currentLightboxIndex === items.length - 1"
             aria-label="Next image"
@@ -206,18 +227,28 @@
           </button>
           
           <!-- Zoom Level Indicator -->
-          <div class="zoom-indicator" v-if="zoomLevel !== 1">
+          <div class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md z-[110]" v-if="zoomLevel !== 1">
             {{ Math.round(zoomLevel * 100) }}%
           </div>
         </div>
       </div>
     </Teleport>
+    
+    <!-- Photo Detail Modal -->
+    <PhotoDetailModal
+      :visible="showPhotoDetailModal"
+      :photo-id="currentLightboxItem?.id"
+      @close="showPhotoDetailModal = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import justifiedLayout from 'justified-layout'
+import type { Photo } from '~/types'
+
+const { photoUrl, downloadPhoto } = useSupabase()
 
 /* ================= TYPES ================= */
 
@@ -232,7 +263,12 @@ export interface GalleryItem {
   [key: string]: any
 }
 
-interface JustifiedItem extends GalleryItem {
+interface EnhancedPhoto extends Photo {
+  photo_url?: string
+  thumbnail_url?: string
+}
+
+interface JustifiedItem extends EnhancedPhoto {
   width: number
   height: number
   left: number
@@ -251,7 +287,7 @@ interface LayoutGeometry {
 }
 
 interface Props {
-  items: GalleryItem[]
+  items: Photo[]
   loading?: boolean
   emptyMessage?: string
   targetRowHeight?: number
@@ -278,19 +314,61 @@ const props = withDefaults(defineProps<Props>(), {
   gap: 10,
   showLabels: 'never',
   lightbox: false,
-  activable: true,
+  activable: false,
   selectable: false,
   forceAspectRatio: false,
   showWidows: true,
-  fullWidthBreakoutRowCadence: false,
+  fullWidthBreakoutRowCadence: false
 })
+
+// URL cache untuk performance optimization
+const urlCache = new Map<string, { photo_url: string; thumbnail_url: string }>()
+
+// Transform items prop ke computed GalleryItems dengan cache
+const galleryItems = computed<EnhancedPhoto[]>(() => {
+  return props.items.map(photo => {
+    // Get or create cached URLs
+    let urls = urlCache.get(photo.photo_path)
+    if (!urls) {
+      urls = {
+        photo_url: photoUrl(photo.photo_path, { transform: { quality: 100}}),
+        thumbnail_url: photoUrl(photo.photo_path, { transform: { height: 300, quality: 80 }})
+      }
+      urlCache.set(photo.photo_path, urls)
+    }
+    
+    return {
+      ...photo,
+      ...urls
+    }
+  })
+})
+
+async function downloadImage(item: EnhancedPhoto) {
+  const data = await downloadPhoto(item.photo_path)
+  if (!data) {
+    console.error('Failed to download image:', item)
+    return
+  }
+
+  const url = URL.createObjectURL(data)
+
+  const a = document.createElement('a')
+  a.href = url
+  if (item.original_name) {
+    a.download = item.original_name
+  }
+  a.click()
+
+  URL.revokeObjectURL(url)
+}
 
 /* ================= EMITS ================= */
 
 const emit = defineEmits<{
-  'item-click': [item: GalleryItem]
-  'select': [items: GalleryItem[]]
-  'lightbox-open': [item: GalleryItem]
+  'item-click': [item: Photo]
+  'select': [items: Photo[]]
+  'lightbox-open': [item: Photo]
   'lightbox-close': []
 }>()
 
@@ -301,9 +379,10 @@ const containerWidth = ref(1200)
 const selectedItems = ref(new Set<string | number>())
 const lightboxOpen = ref(false)
 const currentLightboxIndex = ref(0)
+const lightboxImageState = ref<number>(0)
 const layoutGeometry = ref<LayoutGeometry>({ containerHeight: 0, boxes: [] })
 const layoutItems = ref<JustifiedItem[]>([])
-const imageLoadingStates = ref(new Map<string | number, boolean>())
+const imageStates = ref(new Map<string | number, number>())
 
 // Zoom state
 const zoomLevel = ref(1)
@@ -312,6 +391,9 @@ const panY = ref(0)
 const isDragging = ref(false)
 const lastMouseX = ref(0)
 const lastMouseY = ref(0)
+const showInfoPanel = ref(false)
+const showPhotoDetailModal = ref(false)
+const currentPhotoId = ref<string | null>(null)
 
 // Touch/pinch zoom state
 const initialPinchDistance = ref(0)
@@ -331,21 +413,20 @@ const galleryStyle = computed(() => ({
 }))
 
 const currentLightboxItem = computed(() => {
-  return props.items[currentLightboxIndex.value] || null
+  return galleryItems.value[currentLightboxIndex.value] || null
 })
 
 /* ================= JUSTIFIED LAYOUT LOGIC ================= */
 
-const getImageDimensions = (item: GalleryItem): { aspectRatio: number } => {
+const getImageDimensions = (item: Photo): { aspectRatio: number } => {
   // Use existing dimensions if available
   if (item.width && item.height) {
     return { aspectRatio: item.width / item.height }
   }
-
   return { aspectRatio: 1.5 }
 }
 
-const calculateJustifiedLayout = (items: GalleryItem[]) => {
+const calculateJustifiedLayout = (items: Photo[]) => {
   if (!items.length) {
     layoutGeometry.value = { containerHeight: 0, boxes: [] }
     layoutItems.value = []
@@ -391,8 +472,8 @@ const calculateJustifiedLayout = (items: GalleryItem[]) => {
 
   // Initialize loading states for new items
   items.forEach(item => {
-    if (!imageLoadingStates.value.has(item.id)) {
-      imageLoadingStates.value.set(item.id, true)
+    if (!imageStates.value.has(item.id)) {
+      imageStates.value.set(item.id, 0)
     }
   })
 }
@@ -423,7 +504,7 @@ const updateContainerWidth = async () => {
   // Only update if width actually changed significantly
   if (Math.abs(newWidth - containerWidth.value) > 10) {
     containerWidth.value = newWidth
-    calculateJustifiedLayout(props.items)
+    calculateJustifiedLayout(galleryItems.value)
   }
 }
 
@@ -431,7 +512,7 @@ let resizeObserver: ResizeObserver | null = null
 
 /* ================= EVENT HANDLERS ================= */
 
-const handleItemClick = (item: GalleryItem) => {
+const handleItemClick = (item: Photo) => {
   if (props.lightbox) {
     openLightbox(item)
   } else {
@@ -440,15 +521,16 @@ const handleItemClick = (item: GalleryItem) => {
 }
 
 const handleImageLoad = (itemId: string | number) => {
-  imageLoadingStates.value.set(itemId, false)
+  imageStates.value.set(itemId, 1)
 }
 
-const handleImageError = (event: Event) => {
-  const img = event.target as HTMLImageElement
-  img.style.display = 'none'
+const handleImageError = (event: Event, itemId: string | number) => {
+  imageStates.value.set(itemId, 2)
+  const imgElement = event.target as HTMLImageElement
+  imgElement.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
 }
 
-const toggleSelection = (item: GalleryItem) => {
+const toggleSelection = (item: Photo) => {
   if (!props.selectable) return
   
   const newSelection = new Set(selectedItems.value)
@@ -461,17 +543,18 @@ const toggleSelection = (item: GalleryItem) => {
   
   selectedItems.value = newSelection
   
-  const selected = props.items.filter(i => newSelection.has(i.id))
+  const selected = galleryItems.value.filter(i => newSelection.has(i.id))
   emit('select', selected)
 }
 
 /* ================= LIGHTBOX ================= */
 
-const openLightbox = (item: GalleryItem) => {
-  const index = props.items.findIndex(i => i.id === item.id)
+const openLightbox = (item: Photo) => {
+  const index = galleryItems.value.findIndex(i => i.id === item.id)
   if (index !== -1) {
     currentLightboxIndex.value = index
     lightboxOpen.value = true
+    lightboxImageState.value = 0
     resetZoom()
     emit('lightbox-open', item)
     document.body.style.overflow = 'hidden'
@@ -480,22 +563,51 @@ const openLightbox = (item: GalleryItem) => {
 
 const closeLightbox = () => {
   lightboxOpen.value = false
+  showInfoPanel.value = false
+  showPhotoDetailModal.value = false
   resetZoom()
   emit('lightbox-close')
   document.body.style.overflow = ''
   document.body.style.touchAction = ''
 }
 
+const toggleInfoPanel = () => {
+  if (currentLightboxItem.value) {
+    currentPhotoId.value = currentLightboxItem.value.id
+    showPhotoDetailModal.value = true
+  }
+}
+
+const formatDate = (dateString: string) => {
+  try {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch {
+    return dateString
+  }
+}
+
 const previousImage = () => {
   if (currentLightboxIndex.value > 0) {
     currentLightboxIndex.value--
+    lightboxImageState.value = 0
+    showInfoPanel.value = false
+    showPhotoDetailModal.value = false
     resetZoom()
   }
 }
 
 const nextImage = () => {
-  if (currentLightboxIndex.value < props.items.length - 1) {
+  if (currentLightboxIndex.value < galleryItems.value.length - 1) {
     currentLightboxIndex.value++
+    lightboxImageState.value = 0
+    showInfoPanel.value = false
+    showPhotoDetailModal.value = false
     resetZoom()
   }
 }
@@ -508,7 +620,6 @@ const zoomIn = () => {
 
 const zoomOut = () => {
   zoomLevel.value = Math.max(zoomLevel.value / 1.5, 0.5)
-  applyPanBoundaries()
 }
 
 const resetZoom = () => {
@@ -775,12 +886,36 @@ const endTouch = (event: TouchEvent) => {
   document.body.style.touchAction = ''
 }
 
+
+/* ================= LIGHTBOX IMAGE LOAD HANDLER ================= */
+const handleLightboxImageLoad = () => {
+  lightboxImageState.value = 1;
+};
+
+const handleLightboxImageError = () => {
+  lightboxImageState.value = 2;
+};
+
 /* ================= WATCHERS ================= */
 
 watch(
-  () => props.items,
+  () => galleryItems.value,
   (newItems) => {
     calculateJustifiedLayout(newItems)
+  },
+  { deep: true }
+)
+
+// Cleanup URL cache when items change to prevent memory leaks
+watch(
+  () => props.items,
+  (newItems) => {
+    const currentPaths = new Set(newItems.map(item => item.photo_path))
+    for (const [path] of urlCache.entries()) {
+      if (!currentPaths.has(path)) {
+        urlCache.delete(path)
+      }
+    }
   },
   { deep: true }
 )
@@ -788,7 +923,7 @@ watch(
 watch(
   () => [props.targetRowHeight, props.gap, props.targetRowHeightTolerance, props.maxNumRows],
   () => {
-    calculateJustifiedLayout(props.items)
+    calculateJustifiedLayout(galleryItems.value)
   }
 )
 
@@ -796,8 +931,8 @@ watch(
 watch(
   containerWidth,
   (newWidth, oldWidth) => {
-    if (props.items.length > 0 && Math.abs(newWidth - oldWidth) > 10) {
-      calculateJustifiedLayout(props.items)
+    if (galleryItems.value.length > 0 && Math.abs(newWidth - oldWidth) > 10) {
+      calculateJustifiedLayout(galleryItems.value)
     }
   }
 )
@@ -848,6 +983,9 @@ onUnmounted(() => {
     clearTimeout(tapTimeout.value)
     tapTimeout.value = null
   }
+  
+  // Cleanup URL cache
+  urlCache.clear()
 })
 
 /* ================= KEYBOARD EVENTS ================= */
@@ -893,11 +1031,11 @@ onUnmounted(() => {
 /* ================= EXPOSE ================= */
 
 defineExpose({
-  refresh: () => calculateJustifiedLayout(props.items),
+  refresh: () => calculateJustifiedLayout(galleryItems.value),
   selectAll: () => {
     if (props.selectable) {
-      selectedItems.value = new Set(props.items.map(item => item.id))
-      emit('select', props.items)
+      selectedItems.value = new Set(galleryItems.value.map(item => item.id))
+      emit('select', galleryItems.value)
     }
   },
   unselectAll: () => {
@@ -906,86 +1044,11 @@ defineExpose({
       emit('select', [])
     }
   },
-  getSelected: () => props.items.filter(item => selectedItems.value.has(item.id)),
+  getSelected: () => galleryItems.value.filter(item => selectedItems.value.has(item.id)),
 })
 </script>
 
 <style scoped>
-.justified-gallery-wrapper {
-  position: relative;
-}
-
-.gallery-container {
-  width: 100%;
-}
-
-.gallery-row {
-  display: flex;
-  align-items: flex-start;
-}
-
-.gallery-item {
-  position: relative;
-  overflow: hidden;
-  border-radius: 4px;
-  background-color: #f3f4f6;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.photo-placeholder {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #f3f4f6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1;
-}
-
-.skeleton-loader {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background-color: #e5e7eb;
-}
-
-.skeleton-shimmer {
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.6),
-    transparent
-  );
-  animation: shimmer 1.5s infinite;
-}
-
-.loading-indicator {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9ca3af;
-}
-
-.loading-icon {
-  width: 2rem;
-  height: 2rem;
-  opacity: 0.6;
-  animation: fade 1.5s ease-in-out infinite alternate;
-}
-
 @keyframes shimmer {
   0% {
     left: -100%;
@@ -995,308 +1058,21 @@ defineExpose({
   }
 }
 
-@keyframes fade {
-  0% {
-    opacity: 0.4;
-  }
-  100% {
-    opacity: 0.8;
-  }
-}
-
-.gallery-item-activable:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  z-index: 1;
-}
-
-.gallery-item-selectable {
-  cursor: pointer;
-}
-
-.gallery-item-selected {
-  box-shadow: 0 0 0 2px rgb(59, 130, 246);
-  transform: scale(0.95);
-}
-
-.gallery-image {
-  position: relative;
+/* Custom animation for skeleton shimmer */
+.animate-shimmer {
+  position: absolute;
+  top: 0;
+  left: -100%;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform 0.3s ease, opacity 0.3s ease;
-  z-index: 2;
-  opacity: 0;
+  animation: shimmer 1.5s infinite;
 }
 
-.gallery-image.loaded {
-  opacity: 1;
-}
-
-.gallery-item:hover .gallery-image {
-  transform: scale(1.02);
-}
-
-.selection-checkbox {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 2;
-}
-
-.checkbox {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  background-color: rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.checkbox.checked {
-  background-color: rgb(59, 130, 246);
-  border-color: rgb(59, 130, 246);
-}
-
-.checkmark {
-  width: 12px;
-  height: 12px;
-  color: white;
-}
-
-.gallery-label {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
-  padding: 20px 12px 12px;
-  transition: opacity 0.3s ease;
-}
-
-.gallery-overlay {
-  position: absolute;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.1);
-  pointer-events: none;
-}
-
-/* Lightbox Styles */
-.lightbox-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-}
-
-.lightbox-content {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  box-sizing: border-box;
-}
-
-.lightbox-image {
-  max-width: calc(100vw - 40px);
-  max-height: calc(100vh - 40px);
-  width: auto;
-  height: auto;
-  object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
-  transition: transform 0.3s ease;
-  user-select: none;
-}
-
-.lightbox-image.draggable {
-  transition: none;
-}
-
-.lightbox-zoom-controls {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 1001;
-}
-
-.zoom-btn {
-  background-color: rgba(0, 0, 0, 0.5);
-  border: none;
-  border-radius: 8px;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
-}
-
-.zoom-btn:hover:not(:disabled) {
-  background-color: rgba(0, 0, 0, 0.7);
-  transform: scale(1.05);
-}
-
-.zoom-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.zoom-indicator {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  backdrop-filter: blur(10px);
-  z-index: 1001;
-}
-
-.lightbox-nav {
-  position: fixed;
-  top: 50%;
-  transform: translateY(-50%);
-  background-color: rgba(255, 255, 255, 0.1);
-  border: none;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
-}
-
-.lightbox-nav:hover:not(:disabled) {
-  background-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-50%) scale(1.1);
-}
-
-.lightbox-nav:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.lightbox-prev {
-  left: 10px;
-}
-
-.lightbox-next {
-  right: 10px;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .gallery-item {
-    border-radius: 2px;
-  }
-  
-  .loading-icon {
-    width: 1.5rem;
-    height: 1.5rem;
-  }
-  
-  .lightbox-zoom-controls {
-    top: 20px;
-    right: 10px;
-    gap: 6px;
-  }
-  
-  .zoom-btn {
-    width: 35px;
-    height: 35px;
-  }
-  
-  .lightbox-nav {
-    width: 40px;
-    height: 40px;
-  }
-  
-  .lightbox-prev {
-    left: -50px;
-  }
-  
-  .lightbox-next {
-    right: -50px;
-  }
-}
-
+/* Custom styles for lightbox image responsive sizing */
 @media (max-width: 480px) {
-  .loading-icon {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-  
-  .lightbox-content {
-    padding: 10px;
-  }
-  
   .lightbox-image {
-    max-width: calc(100vw - 20px);
-    max-height: calc(100vh - 20px);
-  }
-  
-  .lightbox-zoom-controls {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    gap: 8px;
-    z-index: 1002;
-  }
-  
-  .zoom-btn {
-    width: 32px;
-    height: 32px;
-  }
-  
-  .zoom-btn svg {
-    width: 16px;
-    height: 16px;
-  }
-  
-  .lightbox-nav {
-    position: fixed;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 44px;
-    height: 44px;
-  }
-  
-  .lightbox-prev {
-    left: 10px;
-  }
-  
-  .lightbox-next {
-    right: 10px;
-  }
-  
-  .zoom-indicator {
-    bottom: 80px;
-    font-size: 12px;
-    padding: 6px 12px;
+    max-width: calc(100vw - 1.25rem);
+    max-height: calc(100vh - 1.25rem);
   }
 }
 </style>
