@@ -9,24 +9,15 @@
 
       <template #right>
         <div class="flex items-center gap-3">
-          <template v-if="isDark">
+          <ClientOnly>
             <UButton
-              icon="i-lucide-moon"
+              :icon="isDark ? 'i-lucide-moon' : 'i-lucide-sun'"
               color="neutral"
               variant="ghost"
-              aria-label="Switch to light mode"
+              aria-label="Theme"
               @click="isDark = !isDark"
             />
-          </template>
-          <template v-else>
-            <UButton
-              icon="i-lucide-sun"
-              color="neutral"
-              variant="ghost"
-              aria-label="Switch to dark mode"
-              @click="isDark = !isDark"
-            />
-          </template>
+          </ClientOnly>
           <UDropdownMenu v-if="isAuthenticated" :items="userMenuItems" :popper="{ placement: 'bottom-end' }">
             <UAvatar
               :src="user?.user_metadata?.avatar_url"

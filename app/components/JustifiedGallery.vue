@@ -54,11 +54,7 @@
               <div class="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/60 to-transparent"></div>
             </div>
             <div class="relative z-20 flex items-center justify-center text-gray-400">
-              <svg class="w-8 h-8 opacity-60 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21,15 16,10 5,21"/>
-              </svg>
+              <UIcon name="i-lucide-loader-circle" class="w-8 h-8 animate-spin text-primary-500" />
             </div>
           </div>
 
@@ -123,46 +119,46 @@
           <!-- Close Button -->
            
           <!-- Zoom Controls -->
-          <div class="fixed top-5 right-5 flex flex-col gap-2 z-[110]" v-if="currentLightboxItem">
+          <div class="fixed top-4 right-4 flex flex-col gap-2 z-[110]" v-if="currentLightboxItem">
             <UButton
               @click.stop="closeLightbox"
+              class="rounded-full text-white backdrop-blur-md bg-white/10 border-none hover:bg-white/20 disabled:bg-white/5 disabled:opacity-50"
               aria-label="Close"
-              size="lg"
               icon="lucide-x"
             />
             <UButton
               @click.stop="zoomIn"
               :disabled="zoomLevel >= 3"
+              class="rounded-full text-white backdrop-blur-md bg-white/10 border-none hover:bg-white/20 disabled:bg-white/5 disabled:opacity-50"
               aria-label="Zoom in"
-              size="lg"
               icon="lucide-zoom-in"
             />
             <UButton
               @click.stop="zoomOut"
               :disabled="zoomLevel <= 0.5"
+              class="rounded-full text-white backdrop-blur-md bg-white/10 border-none hover:bg-white/20 disabled:bg-white/5 disabled:opacity-50"
               aria-label="Zoom out"
-              size="lg"
               icon="lucide-zoom-out"
             />
             <UButton
+              class="rounded-full text-white backdrop-blur-md bg-white/10 border-none hover:bg-white/20 disabled:bg-white/5 disabled:opacity-50"
               @click.stop="resetZoom"
               :disabled="zoomLevel === 1 && panX === 0 && panY === 0"
               aria-label="Reset zoom"
-              size="lg"
               icon="lucide-expand"
             />
 
             <UButton
+              class="rounded-full text-white backdrop-blur-md bg-white/10 border-none hover:bg-white/20 disabled:bg-white/5 disabled:opacity-50"
               @click.stop="downloadImage(currentLightboxItem)"
               aria-label="Download"
               :disabled="lightboxImageState !== 1"
-              size="lg"
               icon="lucide-download"
             />
             <UButton
+              class="rounded-full text-white backdrop-blur-md bg-white/10 border-none hover:bg-white/20 disabled:bg-white/5 disabled:opacity-50"
               @click.stop="toggleInfoPanel"
               aria-label="Photo info"
-              size="lg"
               icon="lucide-info"
             />
           </div>
