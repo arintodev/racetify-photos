@@ -345,11 +345,7 @@ async function downloadImage(item: EnhancedPhoto) {
   const url =  photoUrl(item.photo_path)
   
   const a = document.createElement('a')
-  if (item.original_name) {
-    a.href = `${url}?download=${encodeURIComponent(item.original_name)}`
-  } else {
-    a.href = url
-  }
+  a.href = `${url}?download=${item.original_name ? encodeURIComponent(item.original_name) : ''}`
   a.click()
 
   URL.revokeObjectURL(url)
