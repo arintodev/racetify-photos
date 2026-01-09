@@ -253,13 +253,12 @@
         <div class="text-center mt-8" v-if="hasMorePhotos && searchPerformed">
           <UButton
             color="primary"
-            variant="outline"
-            size="lg"
+            variant="link"
             :loading="isLoadingMore"
             :disabled="isLoadingMore"
             @click="handleLoadMore"
           >
-            Load More Photos
+            Load More
           </UButton>
         </div>
 

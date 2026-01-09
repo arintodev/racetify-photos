@@ -82,13 +82,12 @@
           <div class="text-center mt-8" v-if="hasMorePhotos">
             <UButton
               color="primary"
-              variant="outline"
-              size="lg"
+              variant="link"
               :loading="loadingPhotos"
               :disabled="loadingPhotos"
               @click="handleLoadMore"
             >
-              Load More Photos
+              Load More
             </UButton>
           </div>
           
