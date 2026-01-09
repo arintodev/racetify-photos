@@ -115,6 +115,7 @@
         @keydown.escape="closeLightbox"
         tabindex="-1"
       >
+        
         <div class="relative flex items-center justify-center p-5 sm:p-2.5 box-border" @click.stop>
           <!-- Close Button -->
            
@@ -122,26 +123,26 @@
           <div class="fixed top-4 right-4 flex flex-col gap-2 z-[110]" v-if="currentLightboxItem">
             <UButton
               @click.stop="closeLightbox"
-              class="rounded-full text-white backdrop-blur-md bg-white/10 border-none hover:bg-white/20 disabled:bg-white/5 disabled:opacity-50"
+              class="rounded-full text-white backdrop-blur-md bg-gray/10 border-none hover:bg-gray/20 disabled:bg-gray/5 disabled:opacity-50"
               aria-label="Close"
               icon="lucide-x"
             />
             <UButton
               @click.stop="zoomIn"
               :disabled="zoomLevel >= 3"
-              class="rounded-full text-white backdrop-blur-md bg-white/10 border-none hover:bg-white/20 disabled:bg-white/5 disabled:opacity-50"
+              class="rounded-full text-white backdrop-blur-md bg-gray/10 border-none hover:bg-gray/20 disabled:bg-gray/5 disabled:opacity-50"
               aria-label="Zoom in"
               icon="lucide-zoom-in"
             />
             <UButton
               @click.stop="zoomOut"
               :disabled="zoomLevel <= 0.5"
-              class="rounded-full text-white backdrop-blur-md bg-white/10 border-none hover:bg-white/20 disabled:bg-white/5 disabled:opacity-50"
+              class="rounded-full text-white backdrop-blur-md bg-gray/10 border-none hover:bg-gray/20 disabled:bg-gray/5 disabled:opacity-50"
               aria-label="Zoom out"
               icon="lucide-zoom-out"
             />
             <UButton
-              class="rounded-full text-white backdrop-blur-md bg-white/10 border-none hover:bg-white/20 disabled:bg-white/5 disabled:opacity-50"
+              class="rounded-full text-white backdrop-blur-md bg-gray/10 border-none hover:bg-gray/20 disabled:bg-gray/5 disabled:opacity-50"
               @click.stop="resetZoom"
               :disabled="zoomLevel === 1 && panX === 0 && panY === 0"
               aria-label="Reset zoom"
@@ -149,14 +150,14 @@
             />
 
             <UButton
-              class="rounded-full text-white backdrop-blur-md bg-white/10 border-none hover:bg-white/20 disabled:bg-white/5 disabled:opacity-50"
+              class="rounded-full text-white backdrop-blur-md bg-gray/10 border-none hover:bg-gray/20 disabled:bg-gray/5 disabled:opacity-50"
               @click.stop="downloadImage(currentLightboxItem)"
               aria-label="Download"
               :disabled="lightboxImageState !== 1"
               icon="lucide-download"
             />
             <UButton
-              class="rounded-full text-white backdrop-blur-md bg-white/10 border-none hover:bg-white/20 disabled:bg-white/5 disabled:opacity-50"
+              class="rounded-full text-white backdrop-blur-md bg-gray/10 border-none hover:bg-gray/20 disabled:bg-gray/5 disabled:opacity-50"
               @click.stop="toggleInfoPanel"
               aria-label="Photo info"
               icon="lucide-info"
@@ -168,14 +169,14 @@
             <!-- Loading spinner -->
             <div v-if="lightboxImageState === 0" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[120]">
               <div class="flex items-center justify-center bg-black/50 rounded-full p-3 backdrop-blur-md">
-                <div class="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent"></div>
+                <div class="animate-spin rounded-full h-8 w-8 border-4 border-white border-t-transparent"></div>
               </div>
             </div>
             <!-- Full resolution image -->
             <img
               :src="currentLightboxItem.photo_url"
               :alt="currentLightboxItem.original_name || currentLightboxItem.id"
-              class="max-w-[calc(100vw-2.5rem)] max-h-[calc(100vh-2.5rem)] w-auto h-auto object-contain rounded-lg shadow-2xl transition-all duration-300 ease-in-out select-none absolute top-1/2 left-1/2 origin-center"
+              class="lightbox-image max-w-[calc(100vw-2.5rem)] max-h-[calc(100vh-2.5rem)] w-auto h-auto object-contain rounded-lg shadow-2xl transition-all duration-300 ease-in-out select-none absolute top-1/2 left-1/2 origin-center"
               :class="{ 
                 'transition-none': zoomLevel > 1
               }"
@@ -200,7 +201,7 @@
           <!-- Navigation -->
           <button
             v-if="items.length > 1"
-            class="fixed top-1/2 -translate-y-1/2 left-2.5 bg-white/10 border-none rounded-full w-12 h-12 sm:w-11 sm:h-11 md:w-10 md:h-10 flex items-center justify-center text-white cursor-pointer transition-all duration-200 backdrop-blur-md hover:bg-white/20 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed z-[110]"
+            class="fixed top-1/2 -translate-y-1/2 left-2.5 bg-gray/10 border-none rounded-full w-12 h-12 sm:w-11 sm:h-11 md:w-10 md:h-10 flex items-center justify-center text-white cursor-pointer transition-all duration-200 backdrop-blur-md hover:bg-gray/20 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed z-[110]"
             @click.stop="previousImage"
             :disabled="currentLightboxIndex === 0"
             aria-label="Previous image"
@@ -212,7 +213,7 @@
 
           <button
             v-if="items.length > 1"
-            class="fixed top-1/2 -translate-y-1/2 right-2.5 bg-white/10 border-none rounded-full w-12 h-12 sm:w-11 sm:h-11 md:w-10 md:h-10 flex items-center justify-center text-white cursor-pointer transition-all duration-200 backdrop-blur-md hover:bg-white/20 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed z-[110]"
+            class="fixed top-1/2 -translate-y-1/2 right-2.5 bg-gray/10 border-none rounded-full w-12 h-12 sm:w-11 sm:h-11 md:w-10 md:h-10 flex items-center justify-center text-white cursor-pointer transition-all duration-200 backdrop-blur-md hover:bg-gray/20 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed z-[110]"
             @click.stop="nextImage"
             :disabled="currentLightboxIndex === items.length - 1"
             aria-label="Next image"
@@ -244,7 +245,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import justifiedLayout from 'justified-layout'
 import type { Photo } from '~/types'
 
-const { photoUrl, downloadPhoto } = useSupabase()
+const { photoUrl } = useSupabase()
 
 /* ================= TYPES ================= */
 
@@ -341,18 +342,13 @@ const galleryItems = computed<EnhancedPhoto[]>(() => {
 })
 
 async function downloadImage(item: EnhancedPhoto) {
-  const data = await downloadPhoto(item.photo_path)
-  if (!data) {
-    console.error('Failed to download image:', item)
-    return
-  }
-
-  const url = URL.createObjectURL(data)
-
+  const url =  photoUrl(item.photo_path)
+  
   const a = document.createElement('a')
-  a.href = url
   if (item.original_name) {
-    a.download = item.original_name
+    a.href = `${url}?download=${encodeURIComponent(item.original_name)}`
+  } else {
+    a.href = url
   }
   a.click()
 
