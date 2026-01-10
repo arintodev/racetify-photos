@@ -183,7 +183,7 @@ const fetchLocationFolders = async () => {
       })
     )
 
-    locationFolders.value = foldersWithCounts.filter(f => f.photoCount > 0)
+    locationFolders.value = foldersWithCounts
 
     const { count } = await authFetch<{ count: number }>(
       `/api/events/${eventId}/photo-count`
