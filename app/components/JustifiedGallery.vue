@@ -327,10 +327,9 @@ const galleryItems = computed<EnhancedPhoto[]>(() => {
     // Get or create cached URLs
     let urls = urlCache.get(photo.photo_path)
     if (!urls) {
-      const encodedPath = photo.photo_path.split('/').map(segment => encodeURIComponent(segment)).join('/');
       urls = {
-        photo_url: photoUrl(encodedPath, { transform: { quality: 100}}),
-        thumbnail_url: photoUrl(encodedPath, { transform: { height: 300, quality: 80 }})
+        photo_url: photoUrl(photo.photo_path, { transform: { quality: 100}}),
+        thumbnail_url: photoUrl(photo.photo_path, { transform: { height: 300, quality: 80 }})
       }
       urlCache.set(photo.photo_path, urls)
     }

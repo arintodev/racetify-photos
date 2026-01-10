@@ -250,7 +250,7 @@
         />
 
         <!-- Load More Button -->
-        <div class="text-center mt-8" v-if="hasMorePhotos && searchPerformed">
+        <div class="text-center mt-8" v-if="hasMorePhotos">
           <UButton
             color="primary"
             variant="link"
