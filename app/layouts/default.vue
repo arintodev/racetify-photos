@@ -30,7 +30,7 @@
             color="primary"
             variant="outline"
             to="/login"
-            icon="i-lucide-arrow-right-on-rectangle"
+            icon="i-lucide-log-in"
             label="Login"
           />
         </div>
@@ -81,7 +81,7 @@ const userMenuItems = computed(() => [
   }],
   [{
     label: 'Logout',
-    icon: 'i-lucide-arrow-right-on-rectangle',
+    icon: 'i-lucide-log-out',
     onSelect: async () => {
       await auth.signOut()
       navigateTo('/login')
